@@ -2,7 +2,10 @@
 
 Comprehensive time series foundation model laboratory featuring zero-shot multi-variable forecasting with Google TimesFM-3 and Amazon Chronos-2, an interactive Gradio web application for arbitrary user CSV datasets, and standardized multi-window benchmarking against statistical, tree-based, and deep learning baselines.
 
+Live Hugging Face Space: [https://huggingface.co/spaces/hari31416/ts-foundation-lab](https://huggingface.co/spaces/hari31416/ts-foundation-lab)
+
 ## Features
+
 
 - Interactive Universal Forecaster: Drag-and-drop web application (`app.py`) capable of parsing arbitrary time series CSVs with automatic timestamp detection, target selection, and past/future covariate handling.
 - Preloaded Benchmark Datasets: Instant experimentation with 8 diverse real-world time series spanning electricity demand, solar cycles, retail sales, weather, and airline passenger volumes.
