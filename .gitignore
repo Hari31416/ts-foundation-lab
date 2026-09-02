@@ -10,7 +10,8 @@ wheels/
 .venv
 
 # Data and Cache
-data/
+/data/
 *.csv.zip
 .pytest_cache/
+
 
