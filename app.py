@@ -300,7 +300,7 @@ def run_forecast_pipeline(
 
     try:
         start_t = time.perf_counter()
-        fig, metrics_df, pred_df = engine.run_forecasting(
+        fig, metrics_df, metrics_html, pred_df = engine.run_forecasting(
             df=df,
             target_col=target_col,
             timestamp_col=timestamp_col,
@@ -325,12 +325,13 @@ def run_forecast_pipeline(
         )
         status_text = f"Forecasting completed in {total_time_ms:.1f} ms ({mode_str})."
 
-        return fig, metrics_df, str(export_csv_path), status_text
+        return fig, metrics_html, str(export_csv_path), status_text
     except Exception as e:
         logger.exception("Forecasting execution error: %s", e)
         error_fig = go.Figure()
         error_fig.update_layout(title=f"Error: {str(e)}")
-        return error_fig, pd.DataFrame(), None, f"Error: {str(e)}"
+        err_html = f'<div style="color: #ef4444; padding: 12px;">Error: {str(e)}</div>'
+        return error_fig, err_html, None, f"Error: {str(e)}"
 
 
 def build_app() -> gr.Blocks:
@@ -415,8 +416,8 @@ def build_app() -> gr.Blocks:
                 <div class="header-sub-title">Zero-shot multi-variable time series forecasting powered by state-of-the-art foundation models.</div>
                 <div>
                     <span class="badge-pill badge-google">Google TimesFM-3 (Zero-Shot)</span>
-                    <span class="badge-pill badge-google">Google TimesFM-2.5 (Apache 2.0)</span>
-                    <span class="badge-pill badge-amazon">Amazon Chronos-2 (Apache 2.0)</span>
+                    <span class="badge-pill badge-google">Google TimesFM-2.5 (Zero-Shot)</span>
+                    <span class="badge-pill badge-amazon">Amazon Chronos-2 (Zero-Shot)</span>
                 </div>
 
             </div>
@@ -549,20 +550,12 @@ def build_app() -> gr.Blocks:
                     execution_status = gr.Markdown("")
 
                 with gr.Group():
-                    gr.Markdown("### Evaluation Metrics (Backtest Mode)")
-                    metrics_table = gr.DataFrame(
-                        headers=[
-                            "Model",
-                            "MAE",
-                            "RMSE",
-                            "WAPE",
-                            "CRPS",
-                            "80% Coverage",
-                            "Interval Width",
-                            "Latency (ms)",
-                        ],
-                        label="Zero-Shot Benchmark Metrics",
-                        interactive=False,
+                    gr.Markdown(
+                        "### Evaluation Metrics & Heatmap Scorecard (Backtest Mode)"
+                    )
+                    metrics_table = gr.HTML(
+                        value='<div style="color: #94a3b8; padding: 14px; font-size: 13px;">Run forecasting in Backtest Mode to evaluate models against ground truth actuals.</div>',
+                        label="Scorecard Table",
                     )
 
                     download_btn = gr.DownloadButton(

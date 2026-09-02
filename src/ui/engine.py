@@ -370,7 +370,123 @@ class UniversalForecastingEngine:
             backtest_mode=backtest_mode,
         )
 
-        return fig, metrics_df, predictions_df
+        # Build In-Table Heatmap HTML Scorecard
+        metrics_html = self.generate_metrics_html_table(
+            metrics_rows=metrics_rows,
+            backtest_mode=backtest_mode,
+        )
+
+        return fig, metrics_df, metrics_html, predictions_df
+
+    @staticmethod
+    def generate_metrics_html_table(
+        metrics_rows: List[Dict[str, Any]],
+        backtest_mode: bool = True,
+    ) -> str:
+        """Generate a sleek, responsive HTML table with in-cell heatmap background coloring."""
+        if not metrics_rows:
+            return '<div style="color: #94a3b8; padding: 12px; font-size: 13px;">No evaluation metrics available (run in Backtest Mode to evaluate).</div>'
+
+        # Extract numeric columns for min/max ranking
+        metric_cols = [
+            "MAE",
+            "RMSE",
+            "WAPE",
+            "CRPS",
+            "80% Coverage",
+            "Interval Width",
+            "Latency (ms)",
+        ]
+
+        # Parse numeric matrices for heat evaluation
+        col_values: Dict[str, List[Optional[float]]] = {c: [] for c in metric_cols}
+        for r in metrics_rows:
+            for c in metric_cols:
+                raw = str(r.get(c, "N/A")).replace("%", "").strip()
+                try:
+                    col_values[c].append(float(raw))
+                except Exception:
+                    col_values[c].append(None)
+
+        def get_cell_style(col_name: str, val: Optional[float]) -> str:
+            """Compute heatmap pill styling based on relative column performance."""
+            if val is None:
+                return "color: #64748b; font-size: 13px;"
+
+            valid_vals = [v for v in col_values[col_name] if v is not None]
+            if len(valid_vals) <= 1:
+                return "color: #e2e8f0; font-weight: 500; font-size: 13px;"
+
+            min_v = min(valid_vals)
+            max_v = max(valid_vals)
+
+            if col_name == "80% Coverage":
+                # Closer to 80.0 is better
+                diffs = [abs(v - 80.0) for v in valid_vals]
+                curr_diff = abs(val - 80.0)
+                if curr_diff == min(diffs):
+                    # Best coverage
+                    return "background: rgba(16, 185, 129, 0.22); color: #34d399; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.45); padding: 3px 8px; border-radius: 6px; display: inline-block; font-size: 12.5px;"
+                elif curr_diff == max(diffs):
+                    return "background: rgba(239, 68, 68, 0.16); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); padding: 3px 8px; border-radius: 6px; display: inline-block; font-size: 12.5px;"
+                else:
+                    return "background: rgba(148, 163, 184, 0.12); color: #cbd5e1; padding: 3px 8px; border-radius: 6px; display: inline-block; font-size: 12.5px;"
+
+            # Lower is better for error and latency
+            if max_v == min_v:
+                return "color: #e2e8f0; font-weight: 500; font-size: 13px;"
+
+            # Best in column (minimum error or fastest latency)
+            if val == min_v:
+                return "background: rgba(16, 185, 129, 0.22); color: #34d399; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.45); padding: 3px 8px; border-radius: 6px; display: inline-block; font-size: 12.5px;"
+            elif val == max_v:
+                # Worst in column
+                return "background: rgba(239, 68, 68, 0.16); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); padding: 3px 8px; border-radius: 6px; display: inline-block; font-size: 12.5px;"
+            else:
+                # Middle
+                return "background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.25); padding: 3px 8px; border-radius: 6px; display: inline-block; font-size: 12.5px;"
+
+        headers_html = "".join(
+            f'<th style="padding: 10px 14px; text-align: {"left" if i==0 else "center"}; color: #94a3b8; font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #334155;">{h}</th>'
+            for i, h in enumerate(["Model"] + metric_cols)
+        )
+
+        rows_html = ""
+        for row_idx, r in enumerate(metrics_rows):
+            bg_row = "#0f172a" if row_idx % 2 == 0 else "#1e293b"
+            model_name = r.get("Model", "")
+            cells_html = f'<td style="padding: 10px 14px; font-weight: 600; color: #f8fafc; font-size: 13px; text-align: left; border-bottom: 1px solid #1e293b;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: {COLOR_MAP.get(model_name, "#3b82f6")}; margin-right: 8px;"></span>{model_name}</td>'
+
+            for c in metric_cols:
+                raw_str = str(r.get(c, "N/A"))
+                raw_val = None
+                try:
+                    raw_val = float(raw_str.replace("%", "").strip())
+                except Exception:
+                    pass
+
+                style = get_cell_style(c, raw_val)
+                cells_html += f'<td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #1e293b;"><span style="{style}">{raw_str}</span></td>'
+
+            rows_html += f'<tr style="background: {bg_row}; transition: background 0.15s;">{cells_html}</tr>'
+
+        return f"""
+        <div style="overflow-x: auto; border: 1px solid #334155; border-radius: 8px; margin-top: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <table style="width: 100%; border-collapse: collapse; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">
+                <thead>
+                    <tr style="background: #0f172a;">{headers_html}</tr>
+                </thead>
+                <tbody>
+                    {rows_html}
+                </tbody>
+            </table>
+            <div style="display: flex; gap: 16px; padding: 8px 14px; background: #0f172a; border-top: 1px solid #1e293b; font-size: 11px; color: #94a3b8;">
+                <span><span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 2px; margin-right: 4px;"></span> Best in Column</span>
+                <span><span style="display: inline-block; width: 8px; height: 8px; background: #f59e0b; border-radius: 2px; margin-right: 4px;"></span> Intermediate</span>
+                <span><span style="display: inline-block; width: 8px; height: 8px; background: #ef4444; border-radius: 2px; margin-right: 4px;"></span> Lowest Rank</span>
+            </div>
+        </div>
+        """
 
     def _build_plotly_figure(
         self,
@@ -382,132 +498,66 @@ class UniversalForecastingEngine:
         target_name: str,
         backtest_mode: bool,
     ) -> go.Figure:
-        """Create responsive, multi-panel Plotly subplots for clear forecast and uncertainty analysis."""
+        """Create clean, professional 2-panel figure matching the benchmark comparison plot layout."""
         from plotly.subplots import make_subplots
 
-        num_models = len(forecast_results)
-        model_names = list(forecast_results.keys())
-
-        # Tail length for historical context (last 150 points for clarity)
-        tail_len = min(150, len(context_target))
+        # Tail length for historical context (show last 250 points for optimal context visibility)
+        tail_len = min(250, len(context_target))
         ctx_x = context_times[-tail_len:]
         ctx_y = context_target[-tail_len:]
 
-        # Configure Subplot Layout:
-        # Row 1: Main Overview (Comparative Forecast)
-        # Row 2+: Individual model drilldowns with 80% CI bands
-        if num_models == 1:
-            fig = make_subplots(
-                rows=2,
-                cols=1,
-                row_heights=[0.55, 0.45],
-                vertical_spacing=0.14,
-                subplot_titles=[
-                    f"Overall Forecast & Context: {target_name}",
-                    f"{model_names[0]} (Point Forecast & 80% Uncertainty Band)",
-                ],
-            )
-            drilldown_grid = [(2, 1)]
-        elif num_models == 2:
-            fig = make_subplots(
-                rows=2,
-                cols=2,
-                specs=[[{"colspan": 2}, None], [{}, {}]],
-                row_heights=[0.52, 0.48],
-                vertical_spacing=0.14,
-                subplot_titles=[
-                    f"Multi-Model Comparative Forecast: {target_name}",
-                    f"{model_names[0]} (80% CI)",
-                    f"{model_names[1]} (80% CI)",
-                ],
-            )
-            drilldown_grid = [(2, 1), (2, 2)]
-        else:
-            # 3 or 4 models: 3 rows total
-            fig = make_subplots(
-                rows=3,
-                cols=2,
-                specs=[[{"colspan": 2}, None], [{}, {}], [{}, {}]],
-                row_heights=[0.40, 0.30, 0.30],
-                vertical_spacing=0.12,
-                subplot_titles=[
-                    f"Multi-Model Comparative Overview: {target_name}",
-                    f"{model_names[0]} (80% CI)",
-                    f"{model_names[1]} (80% CI)",
-                    f"{model_names[2]} (80% CI)" if num_models > 2 else "",
-                    f"{model_names[3]} (80% CI)" if num_models > 3 else "",
-                ],
-            )
-            drilldown_grid = [(2, 1), (2, 2), (3, 1), (3, 2)]
+        bottom_title = (
+            "Pointwise Absolute Error (|Forecast - Actual|)"
+            if (backtest_mode and actual_horizon is not None)
+            else "Model Prediction Uncertainty (80% Interval Width: q90 - q10)"
+        )
 
-        # --- ROW 1: Main Overview Plot ---
-        # 1. Historical Context
+        fig = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.07,
+            row_heights=[0.72, 0.28],
+            subplot_titles=[
+                f"Multi-Model Zero-Shot Forecast & 80% Uncertainty: {target_name}",
+                bottom_title,
+            ],
+        )
+
+        # 1. Historical Context (Row 1)
         fig.add_trace(
             go.Scatter(
                 x=ctx_x,
                 y=ctx_y,
                 mode="lines",
                 name="Historical Context",
-                line=dict(color=COLOR_MAP["Context (History)"], width=2.0),
+                line=dict(color=COLOR_MAP["Context (History)"], width=1.8),
                 hovertemplate="<b>Context</b><br>Time: %{x}<br>Value: %{y:.2f}<extra></extra>",
             ),
             row=1,
             col=1,
         )
 
-        # 2. Actual Ground Truth in Row 1
+        # 2. Ground Truth Actuals (Row 1)
         if backtest_mode and actual_horizon is not None:
             fig.add_trace(
                 go.Scatter(
                     x=horizon_times,
                     y=actual_horizon,
-                    mode="lines+markers",
-                    name="Actual Ground Truth",
-                    line=dict(color=COLOR_MAP["Ground Truth"], width=2.5),
-                    marker=dict(size=4),
+                    mode="lines",
+                    name="Ground Truth Actuals",
+                    line=dict(color=COLOR_MAP["Ground Truth"], width=2.4, dash="dash"),
                     hovertemplate="<b>Actual</b><br>Time: %{x}<br>Value: %{y:.2f}<extra></extra>",
                 ),
                 row=1,
                 col=1,
             )
 
-        # 3. Model Point Forecasts in Row 1
+        # 3. Model 80% CI Bands and Point Predictions (Row 1)
         for model_name, res in forecast_results.items():
             base_color = COLOR_MAP.get(model_name, "#2563eb")
-            fig.add_trace(
-                go.Scatter(
-                    x=horizon_times,
-                    y=res.point_forecast,
-                    mode="lines",
-                    name=model_name,
-                    line=dict(color=base_color, width=2.2),
-                    hovertemplate=f"<b>{model_name}</b><br>Time: %{{x}}<br>Pred: %{{y:.2f}}<extra></extra>",
-                ),
-                row=1,
-                col=1,
-            )
 
-        # Vertical Cutoff line in Row 1
-        if len(ctx_x) > 0:
-            fig.add_vline(
-                x=ctx_x[-1],
-                line_width=1.5,
-                line_dash="dash",
-                line_color="#94a3b8",
-                annotation_text="Cutoff",
-                annotation_position="top left",
-                row=1,
-                col=1,
-            )
-
-        # --- ROW 2+: Individual Model Drilldowns with 80% CI Bands ---
-        for idx, (model_name, res) in enumerate(forecast_results.items()):
-            if idx >= len(drilldown_grid):
-                break
-            r, c = drilldown_grid[idx]
-            base_color = COLOR_MAP.get(model_name, "#2563eb")
-
-            # Shaded 80% CI band
+            # 80% Confidence Interval Shaded Area
             if res.quantiles is not None and res.quantile_levels is not None:
                 if 0.1 in res.quantile_levels and 0.9 in res.quantile_levels:
                     idx_10 = res.quantile_levels.index(0.1)
@@ -524,10 +574,10 @@ class UniversalForecastingEngine:
                             showlegend=False,
                             hoverinfo="skip",
                         ),
-                        row=r,
-                        col=c,
+                        row=1,
+                        col=1,
                     )
-                    rgba_color = self._hex_to_rgba(base_color, alpha=0.22)
+                    rgba_color = self._hex_to_rgba(base_color, alpha=0.18)
                     fig.add_trace(
                         go.Scatter(
                             x=horizon_times,
@@ -536,68 +586,108 @@ class UniversalForecastingEngine:
                             line=dict(width=0),
                             fill="tonexty",
                             fillcolor=rgba_color,
-                            name=f"{model_name} 80% CI",
-                            showlegend=False,
+                            name=f"{model_name} (80% CI)",
+                            showlegend=True,
                             hoverinfo="skip",
                         ),
-                        row=r,
-                        col=c,
+                        row=1,
+                        col=1,
                     )
 
-            # Model point prediction
+            # Model Point Forecast
             fig.add_trace(
                 go.Scatter(
                     x=horizon_times,
                     y=res.point_forecast,
                     mode="lines",
+                    name=model_name,
                     line=dict(color=base_color, width=2.2),
-                    showlegend=False,
                     hovertemplate=f"<b>{model_name}</b><br>Time: %{{x}}<br>Pred: %{{y:.2f}}<extra></extra>",
                 ),
-                row=r,
-                col=c,
+                row=1,
+                col=1,
             )
 
-            # Ground truth actuals in drilldown
+        # Vertical Cutoff Line
+        if len(ctx_x) > 0:
+            fig.add_vline(
+                x=ctx_x[-1],
+                line_width=1.5,
+                line_dash="dot",
+                line_color="#94a3b8",
+                annotation_text="Cutoff",
+                annotation_position="top left",
+                row=1,
+                col=1,
+            )
+
+        # 4. ROW 2: Pointwise Residuals / Absolute Error or Uncertainty Width
+        for model_name, res in forecast_results.items():
+            base_color = COLOR_MAP.get(model_name, "#2563eb")
+
             if backtest_mode and actual_horizon is not None:
+                abs_err = np.abs(res.point_forecast - actual_horizon)
                 fig.add_trace(
                     go.Scatter(
                         x=horizon_times,
-                        y=actual_horizon,
-                        mode="lines+markers",
-                        line=dict(
-                            color=COLOR_MAP["Ground Truth"], width=1.5, dash="dot"
-                        ),
-                        marker=dict(size=3),
+                        y=abs_err,
+                        mode="lines",
+                        name=f"{model_name} Error",
+                        line=dict(color=base_color, width=1.8),
                         showlegend=False,
-                        hovertemplate="<b>Actual</b><br>Time: %{x}<br>Value: %{y:.2f}<extra></extra>",
+                        hovertemplate=f"<b>{model_name} Error</b><br>Time: %{{x}}<br>|Err|: %{{y:.2f}}<extra></extra>",
                     ),
-                    row=r,
-                    col=c,
+                    row=2,
+                    col=1,
                 )
+            elif res.quantiles is not None and res.quantile_levels is not None:
+                if 0.1 in res.quantile_levels and 0.9 in res.quantile_levels:
+                    idx_10 = res.quantile_levels.index(0.1)
+                    idx_90 = res.quantile_levels.index(0.9)
+                    ci_width = res.quantiles[:, idx_90] - res.quantiles[:, idx_10]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=horizon_times,
+                            y=ci_width,
+                            mode="lines",
+                            name=f"{model_name} Width",
+                            line=dict(color=base_color, width=1.8),
+                            showlegend=False,
+                            hovertemplate=f"<b>{model_name} Width</b><br>Time: %{{x}}<br>Spread: %{{y:.2f}}<extra></extra>",
+                        ),
+                        row=2,
+                        col=1,
+                    )
 
-        # Figure Dimensions and Styling
-        total_height = 580 if num_models <= 1 else (720 if num_models <= 2 else 960)
-
+        # Figure Dimensions and Theme Styling
         fig.update_layout(
             template="plotly_white",
             hovermode="x unified",
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=-0.08,
+                y=1.02,
                 xanchor="center",
                 x=0.5,
-                bgcolor="rgba(255,255,255,0.9)",
-                bordercolor="#e2e8f0",
+                bgcolor="rgba(255,255,255,0.85)",
+                bordercolor="#cbd5e1",
                 borderwidth=1,
+                font=dict(size=11),
             ),
-            margin=dict(l=55, r=35, t=55, b=65),
-            height=total_height,
+            margin=dict(l=55, r=30, t=65, b=45),
+            height=680,
         )
 
-        fig.update_xaxes(showgrid=True, gridcolor="#f1f5f9")
-        fig.update_yaxes(showgrid=True, gridcolor="#f1f5f9")
+        fig.update_xaxes(
+            showgrid=True,
+            gridcolor="#f1f5f9",
+            linecolor="#cbd5e1",
+        )
+        fig.update_yaxes(
+            showgrid=True,
+            gridcolor="#f1f5f9",
+            linecolor="#cbd5e1",
+        )
 
         return fig
 

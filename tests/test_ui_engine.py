@@ -35,7 +35,7 @@ def test_get_column_options(sample_sales_df: pd.DataFrame) -> None:
 def test_ui_engine_backtest_forecast(sample_sales_df: pd.DataFrame) -> None:
     """Test UniversalForecastingEngine in backtesting mode on arbitrary data."""
     engine = UniversalForecastingEngine()
-    fig, metrics_df, pred_df = engine.run_forecasting(
+    fig, metrics_df, metrics_html, pred_df = engine.run_forecasting(
         df=sample_sales_df,
         target_col="sales_amount",
         timestamp_col="date",
@@ -48,6 +48,8 @@ def test_ui_engine_backtest_forecast(sample_sales_df: pd.DataFrame) -> None:
     )
 
     assert fig is not None
+    assert isinstance(metrics_html, str)
+    assert "<table" in metrics_html
     assert not metrics_df.empty
     assert "MAE" in metrics_df.columns
     assert len(pred_df) == 16
@@ -71,7 +73,7 @@ def test_ui_engine_dirty_csv_handling() -> None:
     assert "Cost" in num_cols
 
     engine = UniversalForecastingEngine()
-    fig, metrics_df, pred_df = engine.run_forecasting(
+    fig, metrics_df, metrics_html, pred_df = engine.run_forecasting(
         df=df_dirty,
         target_col="Temp",
         timestamp_col="Date",
@@ -83,5 +85,7 @@ def test_ui_engine_dirty_csv_handling() -> None:
         backtest_mode=True,
     )
     assert fig is not None
+    assert isinstance(metrics_html, str)
+    assert "<table" in metrics_html
     assert len(pred_df) == 8
     assert not metrics_df.empty
