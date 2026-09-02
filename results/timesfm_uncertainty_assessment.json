@@ -1,10 +1,13 @@
 {
   "model": "TimesFM-3 (Zero-Shot)",
+  "num_windows": 12,
   "horizon": 96,
   "nominal_coverage_target": 0.8,
-  "empirical_80_coverage": 0.6770833333333334,
-  "average_interval_width": 2.5581271648406982,
-  "crps": 0.8102071285247803,
+  "mean_empirical_80_coverage": 0.7213541666666666,
+  "mean_interval_width": 4.834506173928578,
+  "mean_crps": 1.551292136311531,
+  "mean_mae": 2.0059281239906945,
+  "mean_rmse": 2.547574996948242,
   "quantile_levels": [
     0.1,
     0.2,

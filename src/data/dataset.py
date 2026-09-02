@@ -193,3 +193,76 @@ class WeatherDatasetLoader:
             past_only_names=list(past_only_df.columns),
             past_future_names=list(past_future_df.columns),
         )
+
+    def get_rolling_benchmark_windows(
+        self,
+        num_windows: int = 12,
+        context_length: int = 512,
+        horizon: int = 96,
+        start_ratio: float = 0.70,
+        end_ratio: float = 0.98,
+    ) -> List[Tuple[int, BenchmarkWindow]]:
+        """Extract multiple evenly-spaced rolling benchmark windows across the evaluation partition.
+
+        Args:
+            num_windows: Number of rolling windows to extract (e.g., 12).
+            context_length: Historical context steps (512).
+            horizon: Forecast horizon steps (96).
+            start_ratio: Proportion of dataset to begin sampling from.
+            end_ratio: Proportion of dataset to end sampling at.
+
+        Returns:
+            List of tuples (start_idx, BenchmarkWindow).
+        """
+        df = self.download_and_load()
+        targets_df, past_only_df, past_future_df = self.extract_covariates(df)
+        total_length = context_length + horizon
+        n_rows = len(df)
+
+        min_start = int(n_rows * start_ratio)
+        max_start = int(n_rows * end_ratio) - total_length
+
+        if max_start <= min_start:
+            raise ValueError(
+                f"Invalid range for rolling windows: [{min_start}, {max_start}]"
+            )
+
+        step_indices = np.linspace(min_start, max_start, num_windows, dtype=int)
+        windows: List[Tuple[int, BenchmarkWindow]] = []
+
+        for start_idx in step_indices:
+            window_targets = targets_df.iloc[start_idx : start_idx + total_length]
+            window_past_only = past_only_df.iloc[start_idx : start_idx + total_length]
+            window_past_future = past_future_df.iloc[
+                start_idx : start_idx + total_length
+            ]
+
+            context_target = window_targets.iloc[:context_length, 0].to_numpy(
+                dtype=np.float32
+            )
+            horizon_target = window_targets.iloc[context_length:, 0].to_numpy(
+                dtype=np.float32
+            )
+
+            past_only_context = (
+                window_past_only.iloc[:context_length].to_numpy(dtype=np.float32).T
+            )
+            past_future_full = window_past_future.to_numpy(dtype=np.float32).T
+
+            timestamps_context = window_targets.index[:context_length]
+            timestamps_horizon = window_targets.index[context_length:]
+
+            window = BenchmarkWindow(
+                context_target=context_target,
+                horizon_target=horizon_target,
+                past_only_context=past_only_context,
+                past_future_full=past_future_full,
+                timestamps_context=timestamps_context,
+                timestamps_horizon=timestamps_horizon,
+                target_name=targets_df.columns[0],
+                past_only_names=list(past_only_df.columns),
+                past_future_names=list(past_future_df.columns),
+            )
+            windows.append((int(start_idx), window))
+
+        return windows

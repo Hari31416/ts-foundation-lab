@@ -1,4 +1,4 @@
-"""Unit tests for the benchmarking pipeline, models, and evaluation metrics."""
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -130,3 +130,25 @@ def test_classical_forecaster(mock_benchmark_window: BenchmarkWindow) -> None:
     assert result.point_forecast.shape == (96,)
     assert result.quantiles is not None
     assert result.quantiles.shape == (96, 9)
+
+
+def test_rolling_windows_generation(tmp_path: Path) -> None:
+    """Test generating rolling benchmark windows from cached or downloaded dataset."""
+    from src.data.dataset import WeatherDatasetLoader
+
+    loader = WeatherDatasetLoader()
+    # If cached dataset exists, verify rolling extraction
+    if loader.csv_path.exists():
+        windows = loader.get_rolling_benchmark_windows(
+            num_windows=3,
+            context_length=128,
+            horizon=32,
+            start_ratio=0.8,
+            end_ratio=0.9,
+        )
+        assert len(windows) == 3
+        for start_idx, w in windows:
+            assert w.context_target.shape == (128,)
+            assert w.horizon_target.shape == (32,)
+            assert w.past_only_context.shape == (6, 128)
+            assert w.past_future_full.shape == (6, 160)
