@@ -253,6 +253,17 @@ def on_file_uploaded(
         )
 
 
+try:
+    import spaces  # type: ignore
+
+    GPU_DECORATOR = spaces.GPU
+except (ImportError, AttributeError):
+
+    def GPU_DECORATOR(func=None, **kwargs):
+        return func if func is not None else lambda f: f
+
+
+@GPU_DECORATOR
 def run_forecast_pipeline(
     df: Optional[pd.DataFrame],
     timestamp_col: Optional[str],
