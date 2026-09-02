@@ -1,0 +1,19 @@
+{
+  "model": "TimesFM-3 (Zero-Shot)",
+  "horizon": 96,
+  "nominal_coverage_target": 0.8,
+  "empirical_80_coverage": 0.6770833333333334,
+  "average_interval_width": 2.5581271648406982,
+  "crps": 0.8102071285247803,
+  "quantile_levels": [
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9
+  ]
+}
