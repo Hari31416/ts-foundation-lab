@@ -199,7 +199,7 @@ class WeatherDatasetLoader:
         num_windows: int = 12,
         context_length: int = 512,
         horizon: int = 96,
-        start_ratio: float = 0.70,
+        start_ratio: float = 0.80,
         end_ratio: float = 0.98,
     ) -> List[Tuple[int, BenchmarkWindow]]:
         """Extract multiple evenly-spaced rolling benchmark windows across the evaluation partition.
@@ -266,3 +266,57 @@ class WeatherDatasetLoader:
             windows.append((int(start_idx), window))
 
         return windows
+
+    def get_train_val_test_splits(
+        self,
+        train_ratio: float = 0.70,
+        val_ratio: float = 0.09,
+        context_length: int = 512,
+        horizon: int = 96,
+    ) -> Tuple[
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame],
+    ]:
+        """Extract chronologically isolated train, val, and test partitions with zero data leakage.
+
+        Returns:
+            Tuple of (train_splits, val_splits, test_splits), where each is (targets, past_only, past_future).
+        """
+        df = self.download_and_load()
+        targets_df, past_only_df, past_future_df = self.extract_covariates(df)
+        n_rows = len(df)
+        buffer_len = context_length + horizon
+
+        train_end = int(n_rows * train_ratio)
+        val_start = train_end + buffer_len
+        val_end = val_start + int(n_rows * val_ratio)
+        test_start = val_end + buffer_len
+
+        logger.info(
+            "Temporal Splits: Train [0:%d], Val [%d:%d], Test [%d:%d] (Buffer=%d steps)",
+            train_end,
+            val_start,
+            val_end,
+            test_start,
+            n_rows,
+            buffer_len,
+        )
+
+        train_split = (
+            targets_df.iloc[:train_end],
+            past_only_df.iloc[:train_end],
+            past_future_df.iloc[:train_end],
+        )
+        val_split = (
+            targets_df.iloc[val_start:val_end],
+            past_only_df.iloc[val_start:val_end],
+            past_future_df.iloc[val_start:val_end],
+        )
+        test_split = (
+            targets_df.iloc[test_start:],
+            past_only_df.iloc[test_start:],
+            past_future_df.iloc[test_start:],
+        )
+
+        return train_split, val_split, test_split

@@ -1,37 +1,32 @@
 [project]
 name = "times-fm-benchmark"
 version = "0.1.0"
-description = "Add your description here"
+description = "Multi-variable time series benchmark"
 readme = "README.md"
-authors = [
-    { name = "Harikesh Kushwaha", email = "harikeshkumar0926@gmail.com" }
-]
 requires-python = ">=3.11"
 dependencies = [
     "black>=26.5.1",
+    "chronos-forecasting>=0.1.0",
     "lightgbm>=4.7.0",
     "matplotlib>=3.11.1",
-    "numpy>=2.4.6",
-    "pandas>=3.0.5",
+    "numpy>=2.0.0",
+    "pandas>=2.2.0",
+    "peft>=0.20.0",
     "pmdarima>=2.1.1",
     "pytest>=9.1.1",
     "requests>=2.34.2",
-    "scikit-learn>=1.9.0",
-    "scipy>=1.17.1",
-    "statsmodels>=0.15.0",
+    "scikit-learn>=1.5.0",
+    "scipy>=1.14.0",
+    "statsmodels>=0.14.0",
     "timesfm>=3.0.1",
-    "torch>=2.13.0",
-    "xgboost>=3.2.0",
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "xgboost>=2.0.0",
 ]
 
-[project.scripts]
-times-fm-benchmark = "times_fm_benchmark:main"
-
-[build-system]
-requires = ["uv_build>=0.12.1,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-

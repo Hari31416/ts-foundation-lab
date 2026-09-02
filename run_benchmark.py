@@ -1,4 +1,4 @@
-"""Main executable benchmark script comparing TimesFM-3 against classical and ML-based forecasting models across rolling evaluation windows."""
+"""Main executable benchmark script comparing TimesFM-3, Chronos-2, and baselines across rolling evaluation windows."""
 
 import json
 import logging
@@ -14,8 +14,11 @@ from src.evaluation.visualizer import (
     plot_benchmark_comparison,
     plot_rolling_benchmark_summary,
 )
+from src.models.chronos_finetuned import Chronos2FineTunedWrapper
+from src.models.chronos_model import Chronos2ModelWrapper
 from src.models.classical_model import ClassicalForecaster
 from src.models.deep_model import DeepLearningForecaster
+from src.models.timesfm_finetuned import TimesFM3FineTunedWrapper
 from src.models.timesfm_model import ForecastResult, TimesFM3ModelWrapper
 from src.models.tree_model import LightGBMForecaster
 
@@ -28,23 +31,25 @@ logger = logging.getLogger("run_benchmark")
 
 
 def run_benchmark() -> None:
-    """Execute end-to-end multi-variable forecasting benchmark pipeline with rolling windows."""
+    """Execute multi-variable forecasting benchmark pipeline across rolling evaluation windows."""
     base_dir = Path(__file__).resolve().parent
     results_dir = base_dir / "results"
     windows_dir = results_dir / "windows"
     windows_dir.mkdir(parents=True, exist_ok=True)
+    tfm_checkpoint_path = results_dir / "timesfm_finetuned_checkpoint.pt"
+    chronos_checkpoint_dir = results_dir / "chronos2_finetuned" / "checkpoint-final"
 
     logger.info(
-        "Starting TimesFM-3 Rolling-Window Multi-Variable Forecasting Benchmark"
+        "Starting Multi-Variable Forecasting Rolling Benchmark with Foundation & Baseline Models"
     )
 
-    # Step 1: Load rolling windows from Weather benchmark dataset
+    # Step 1: Load rolling windows from Weather benchmark dataset (Test Split: 2015-2016)
     context_length = 512
     horizon = 96
     num_windows = 12
 
     logger.info(
-        "Extracting %d rolling windows (Context=%d, Horizon=%d)",
+        "Extracting %d rolling test windows (Context=%d, Horizon=%d)",
         num_windows,
         context_length,
         horizon,
@@ -55,18 +60,20 @@ def run_benchmark() -> None:
         num_windows=num_windows,
         context_length=context_length,
         horizon=horizon,
-        start_ratio=0.70,
+        start_ratio=0.80,
         end_ratio=0.98,
     )
 
     logger.info(
-        "Successfully extracted %d rolling evaluation windows.", len(rolling_windows)
+        "Successfully extracted %d rolling evaluation windows.",
+        len(rolling_windows),
     )
 
-    # Step 2: Initialize models once (re-used across windows)
+    # Step 2: Initialize all evaluated models
     logger.info("Initializing models for benchmark...")
     models = {
         "TimesFM-3 (Zero-Shot)": TimesFM3ModelWrapper(),
+        "Chronos-2 (Zero-Shot)": Chronos2ModelWrapper(),
         "AutoARIMA": ClassicalForecaster(seasonal=False, max_p=3, max_q=3),
         "LightGBM": LightGBMForecaster(n_estimators=150, learning_rate=0.05),
         "DeepAR (Deep Learning)": DeepLearningForecaster(
@@ -74,8 +81,21 @@ def run_benchmark() -> None:
         ),
     }
 
+    if tfm_checkpoint_path.exists():
+        logger.info("Found fine-tuned TimesFM-3 checkpoint at %s", tfm_checkpoint_path)
+        models["TimesFM-3 (Fine-Tuned)"] = TimesFM3FineTunedWrapper(
+            checkpoint_path=tfm_checkpoint_path
+        )
+
+    if chronos_checkpoint_dir.exists():
+        logger.info(
+            "Found fine-tuned Chronos-2 checkpoint at %s", chronos_checkpoint_dir
+        )
+        models["Chronos-2 (Fine-Tuned)"] = Chronos2FineTunedWrapper(
+            checkpoint_path=chronos_checkpoint_dir
+        )
+
     detailed_records = []
-    window_summaries = []
 
     # Step 3: Run inference on each window
     for w_idx, (start_idx, window) in enumerate(rolling_windows, start=1):
@@ -171,7 +191,7 @@ def run_benchmark() -> None:
         logger.info("Saved %s plot and metrics.", window_id_str)
 
         if w_idx == 1:
-            # Also save window 1 to results/benchmark_comparison.png for backward-compatibility
+            # Also save window 1 to results/benchmark_comparison.png for preview
             plot_benchmark_comparison(
                 window=window,
                 results=forecast_results,
@@ -217,7 +237,7 @@ def run_benchmark() -> None:
                 "RMSE_Mean": f"{rmse_mean:.4f}",
                 "RMSE_Std": f"{rmse_std:.4f}",
                 "WAPE_Mean": f"{wape_mean:.4f}",
-                "CRPS_Mean": f"{crps_mean:.4f}" if crps_mean is not None else "N/A",
+                "CRPS_Mean": (f"{crps_mean:.4f}" if crps_mean is not None else "N/A"),
                 "80%_Coverage_Mean": (
                     f"{cov_mean * 100:.1f}%" if cov_mean is not None else "N/A"
                 ),
@@ -242,25 +262,37 @@ def run_benchmark() -> None:
         df_summary.to_string(index=False),
     )
 
-    # Step 5: TimesFM-3 Uncertainty Summary across all windows
-    tfm_records = df_details[df_details["Model"] == "TimesFM-3 (Zero-Shot)"]
+    # Step 5: Save Foundation Models Uncertainty Summaries
     uncertainty_details = {
-        "model": "TimesFM-3 (Zero-Shot)",
+        "nominal_coverage_target": 0.80,
         "num_windows": num_windows,
         "horizon": horizon,
-        "nominal_coverage_target": 0.80,
-        "mean_empirical_80_coverage": float(tfm_records["Coverage_80"].mean()),
-        "mean_interval_width": float(tfm_records["Interval_Width"].mean()),
-        "mean_crps": float(tfm_records["CRPS"].mean()),
-        "mean_mae": float(tfm_records["MAE"].mean()),
-        "mean_rmse": float(tfm_records["RMSE"].mean()),
-        "quantile_levels": TimesFM3ModelWrapper.DEFAULT_QUANTILES,
     }
 
-    uncertainty_json_path = results_dir / "timesfm_uncertainty_assessment.json"
+    for foundation_model in [
+        "TimesFM-3 (Zero-Shot)",
+        "Chronos-2 (Zero-Shot)",
+        "TimesFM-3 (Fine-Tuned)",
+        "Chronos-2 (Fine-Tuned)",
+    ]:
+        sub_fm = df_details[df_details["Model"] == foundation_model]
+        if not sub_fm.empty:
+            uncertainty_details[foundation_model] = {
+                "mean_empirical_80_coverage": float(sub_fm["Coverage_80"].mean()),
+                "mean_interval_width": float(sub_fm["Interval_Width"].mean()),
+                "mean_crps": float(sub_fm["CRPS"].mean()),
+                "mean_mae": float(sub_fm["MAE"].mean()),
+                "mean_rmse": float(sub_fm["RMSE"].mean()),
+            }
+
+    uncertainty_json_path = (
+        results_dir / "foundation_models_uncertainty_assessment.json"
+    )
     with open(uncertainty_json_path, "w", encoding="utf-8") as f:
         json.dump(uncertainty_details, f, indent=2)
-    logger.info("Saved TimesFM-3 uncertainty assessment to %s", uncertainty_json_path)
+    logger.info(
+        "Saved foundation models uncertainty assessment to %s", uncertainty_json_path
+    )
 
     # Step 6: Generate rolling summary visualization
     rolling_plot_path = results_dir / "rolling_benchmark_summary.png"
@@ -282,7 +314,7 @@ def run_benchmark() -> None:
         horizon=horizon,
     )
     logger.info("Auto-generated README at %s", readme_path)
-    logger.info("Rolling-Window Benchmark execution completed successfully.")
+    logger.info("Benchmark execution completed successfully.")
 
 
 def generate_readme(
@@ -329,14 +361,10 @@ def generate_readme(
     )
 
     # Format window-by-window detail table
-    detail_headers = [
-        "Window",
-        "Period (UTC)",
-        "TimesFM-3 MAE",
-        "AutoARIMA MAE",
-        "LightGBM MAE",
-        "DeepAR MAE",
-    ]
+    detail_headers = ["Window", "Period (UTC)"]
+    evaluated_models = df_details["Model"].unique().tolist()
+    detail_headers.extend(evaluated_models)
+
     detail_rows = []
     for w_idx in sorted(df_details["Window"].unique()):
         sub_w = df_details[df_details["Window"] == w_idx]
@@ -344,20 +372,11 @@ def generate_readme(
         end_t = sub_w.iloc[0]["Horizon_End"]
         period_str = f"{start_t} to {end_t}"
 
-        def get_model_mae(m_name: str) -> str:
+        row_vals = [f"Window {w_idx:02d}", period_str]
+        for m_name in evaluated_models:
             m_sub = sub_w[sub_w["Model"] == m_name]
-            return f"{m_sub.iloc[0]['MAE']:.4f}" if not m_sub.empty else "N/A"
-
-        detail_rows.append(
-            [
-                f"Window {w_idx:02d}",
-                period_str,
-                get_model_mae("TimesFM-3 (Zero-Shot)"),
-                get_model_mae("AutoARIMA"),
-                get_model_mae("LightGBM"),
-                get_model_mae("DeepAR (Deep Learning)"),
-            ]
-        )
+            row_vals.append(f"{m_sub.iloc[0]['MAE']:.4f}" if not m_sub.empty else "N/A")
+        detail_rows.append(row_vals)
 
     detail_header_line = "| " + " | ".join(detail_headers) + " |"
     detail_sep_line = "| " + " | ".join(["---"] * len(detail_headers)) + " |"
@@ -366,19 +385,30 @@ def generate_readme(
         [detail_header_line, detail_sep_line] + detail_data_lines
     )
 
-    cov_val = (
-        f"{(uncertainty_details.get('mean_empirical_80_coverage') or 0.0) * 100.0:.2f}%"
-    )
-    avg_width_val = f"{(uncertainty_details.get('mean_interval_width') or 0.0):.4f}"
-    crps_val = f"{(uncertainty_details.get('mean_crps') or 0.0):.4f}"
+    uncertainty_lines = []
+    for model_key in [
+        "TimesFM-3 (Zero-Shot)",
+        "Chronos-2 (Zero-Shot)",
+        "TimesFM-3 (Fine-Tuned)",
+    ]:
+        if model_key in uncertainty_details:
+            info = uncertainty_details[model_key]
+            cov = f"{info['mean_empirical_80_coverage'] * 100.0:.2f}%"
+            w = f"{info['mean_interval_width']:.4f}"
+            c = f"{info['mean_crps']:.4f}"
+            uncertainty_lines.append(
+                f"- **{model_key}**: Empirical Coverage: {cov} | Interval Width: {w} | CRPS: {c}"
+            )
 
-    readme_content = f"""# TimesFM-3 Multi-Variable Forecasting Benchmark
+    uncertainty_block = "\n".join(uncertainty_lines)
 
-Benchmark experiment evaluating Google TimesFM-3 zero-shot foundation model against classical statistical, gradient boosted tree, and deep learning forecasting architectures on the Weather multi-variable dataset across a {num_windows}-window rolling evaluation protocol.
+    readme_content = f"""# Foundation Models Multi-Variable Forecasting Benchmark: TimesFM-3 vs Chronos-2
+
+Comprehensive forecasting benchmark evaluating Google TimesFM-3 and Amazon Chronos-2 foundation models against classical statistical, gradient boosted tree, and deep learning forecasting architectures on the Weather multi-variable dataset across a {num_windows}-window rolling evaluation protocol.
 
 ## Benchmark Overview
 
-This repository benchmarks time series models under standardized context lengths and prediction horizons across multiple temporal regimes and weather seasons.
+This repository benchmarks time series models under standardized context lengths and prediction horizons across multiple temporal regimes and weather seasons with strict zero-leakage chronological partitioning.
 
 ### Problem Formulation
 
@@ -392,7 +422,8 @@ This repository benchmarks time series models under standardized context lengths
 
 ## Evaluated Models
 
-- TimesFM-3 (Zero-Shot): Google foundation model (`google/timesfm-3.0-pytorch`) predicting median point forecasts and 9 quantile intervals (10th to 90th percentile) using cross-attention over multivariate past and future covariates.
+- TimesFM-3 (Zero-Shot): Google foundation model (`google/timesfm-3.0-pytorch`) predicting point forecasts and 9 quantile intervals (10th to 90th percentile) using cross-attention over multivariate past and future covariates.
+- Chronos-2 (Zero-Shot): Amazon foundation model (`amazon/chronos-2`) predicting point forecasts and 9 quantile intervals (10th to 90th percentile) using covariate-informed attention over past and future regressors.
 - AutoARIMA: Classical statistical benchmark fitted via stepwise parameter search with dynamic calendar exogenous regressors.
 - LightGBM / Tree Boosting: Gradient boosted decision trees using lag features, rolling statistics, and future calendar covariate steps.
 - DeepAR (Deep Learning): Recurrent neural network with Gaussian likelihood head trained on context sequences using Monte Carlo predictive sampling.
@@ -405,12 +436,10 @@ This repository benchmarks time series models under standardized context lengths
 
 {detail_table_md}
 
-## TimesFM-3 Uncertainty Assessment (Aggregate)
+## Foundation Models Uncertainty Assessment (Aggregate)
 
 - Nominal Coverage Target: 80.00% (10th to 90th percentile)
-- Empirical Interval Coverage: {cov_val}
-- Average Interval Width: {avg_width_val}
-- Quantile CRPS: {crps_val}
+{uncertainty_block}
 
 ## Visual Comparisons
 
@@ -426,12 +455,11 @@ Individual plots and metric CSVs for all {num_windows} evaluation windows are ar
 
 ## Procedure and Workflow
 
-1. Data Ingestion: Download and cache Jena Climate dataset, clean anomalous values, and compute cyclical timestamp features (`hour_sin`, `hour_cos`, `dayofweek_sin`, etc.).
-2. Rolling Window Extraction: Extract {num_windows} evenly distributed windows, each with {context_length} context steps and {horizon} future horizon steps.
-3. Partitioning: Separate columns into Target, Past-Only Covariates, and Past-Future Covariates.
-4. Model Inference: Execute predictions across all 4 model classes under identical historical context and future horizon inputs for each window.
-5. Evaluation: Compute MAE, RMSE, WAPE, CRPS, 10th-90th coverage calibration, and inference latency per window and in aggregate.
-6. Visualization & Reporting: Generate per-window comparison plots (`results/windows/`), cross-window summary plots (`results/rolling_benchmark_summary.png`), summary CSVs, uncertainty JSON metrics, and auto-update this documentation.
+1. Data Ingestion & Partitioning: Download and cache Jena Climate dataset, clean anomalous values, and strictly partition into train, validation, and test sets.
+2. Rolling Window Extraction: Extract {num_windows} evenly distributed windows across the test split, each with {context_length} context steps and {horizon} future horizon steps.
+3. Model Inference (`run_benchmark.py`): Execute predictions across all evaluated model classes under identical historical context and future horizon inputs for each window.
+4. Evaluation: Compute MAE, RMSE, WAPE, CRPS, 10th-90th coverage calibration, and inference latency per window and in aggregate.
+5. Visualization & Reporting: Generate per-window comparison plots (`results/windows/`), cross-window summary plots (`results/rolling_benchmark_summary.png`), summary CSVs, uncertainty JSON metrics, and auto-update this documentation.
 
 ## Installation and Reproduction
 
@@ -444,6 +472,12 @@ Install `uv` (Fast Python package and project manager).
 ```bash
 uv sync
 uv run python run_benchmark.py
+```
+
+### Running the Optional Fine-Tuning Pipeline
+
+```bash
+uv run python train_timesfm.py --epochs 3 --lr 1e-4
 ```
 
 ### Running Tests

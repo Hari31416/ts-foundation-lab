@@ -1,0 +1,33 @@
+{
+  "nominal_coverage_target": 0.8,
+  "num_windows": 12,
+  "horizon": 96,
+  "TimesFM-3 (Zero-Shot)": {
+    "mean_empirical_80_coverage": 0.7647569444444445,
+    "mean_interval_width": 5.141744474569957,
+    "mean_crps": 1.260343760251999,
+    "mean_mae": 1.6575132310390472,
+    "mean_rmse": 1.8744976669549942
+  },
+  "Chronos-2 (Zero-Shot)": {
+    "mean_empirical_80_coverage": 0.7916666666666666,
+    "mean_interval_width": 4.930181264877319,
+    "mean_crps": 1.2825999930500984,
+    "mean_mae": 1.6451191119849682,
+    "mean_rmse": 1.855229064822197
+  },
+  "TimesFM-3 (Fine-Tuned)": {
+    "mean_empirical_80_coverage": 0.7847222222222222,
+    "mean_interval_width": 4.137231379747391,
+    "mean_crps": 1.0459475815296173,
+    "mean_mae": 1.3191947440306346,
+    "mean_rmse": 1.5173297226428986
+  },
+  "Chronos-2 (Fine-Tuned)": {
+    "mean_empirical_80_coverage": 0.8098958333333334,
+    "mean_interval_width": 4.709997713565826,
+    "mean_crps": 1.2002766480048497,
+    "mean_mae": 1.5282450802624226,
+    "mean_rmse": 1.729854801048835
+  }
+}

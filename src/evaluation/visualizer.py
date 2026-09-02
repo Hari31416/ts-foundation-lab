@@ -70,19 +70,22 @@ def plot_benchmark_comparison(
 
     colors = {
         "TimesFM-3 (Zero-Shot)": "#2563eb",
+        "Chronos-2 (Zero-Shot)": "#ea580c",
+        "TimesFM-3 (Fine-Tuned)": "#7c3aed",
+        "Chronos-2 (Fine-Tuned)": "#dc2626",
         "LightGBM": "#16a34a",
         "AutoARIMA": "#d97706",
-        "DeepAR (Deep Learning)": "#9333ea",
+        "DeepAR (Deep Learning)": "#0891b2",
     }
 
-    # Plot TimesFM-3 prediction and confidence interval
+    # Plot TimesFM-3 (Zero-Shot)
     if "TimesFM-3 (Zero-Shot)" in results:
         tfm_res = results["TimesFM-3 (Zero-Shot)"]
         ax1.plot(
             hrz_times,
             tfm_res.point_forecast,
-            color=colors.get("TimesFM-3 (Zero-Shot)", "#2563eb"),
-            label="TimesFM-3 Median",
+            color=colors["TimesFM-3 (Zero-Shot)"],
+            label="TimesFM-3 Zero-Shot",
             linewidth=2.0,
         )
         if tfm_res.quantiles is not None and tfm_res.quantile_levels is not None:
@@ -93,9 +96,81 @@ def plot_benchmark_comparison(
                     hrz_times,
                     tfm_res.quantiles[:, idx_10],
                     tfm_res.quantiles[:, idx_90],
-                    color=colors.get("TimesFM-3 (Zero-Shot)", "#2563eb"),
-                    alpha=0.2,
-                    label="TimesFM-3 10th-90th %ile",
+                    color=colors["TimesFM-3 (Zero-Shot)"],
+                    alpha=0.15,
+                    label="TimesFM-3 Zero-Shot 80% CI",
+                )
+
+    # Plot Chronos-2 (Zero-Shot)
+    if "Chronos-2 (Zero-Shot)" in results:
+        chr_res = results["Chronos-2 (Zero-Shot)"]
+        ax1.plot(
+            hrz_times,
+            chr_res.point_forecast,
+            color=colors["Chronos-2 (Zero-Shot)"],
+            label="Chronos-2 Zero-Shot",
+            linewidth=2.0,
+            linestyle="-",
+        )
+        if chr_res.quantiles is not None and chr_res.quantile_levels is not None:
+            if 0.1 in chr_res.quantile_levels and 0.9 in chr_res.quantile_levels:
+                idx_10 = chr_res.quantile_levels.index(0.1)
+                idx_90 = chr_res.quantile_levels.index(0.9)
+                ax1.fill_between(
+                    hrz_times,
+                    chr_res.quantiles[:, idx_10],
+                    chr_res.quantiles[:, idx_90],
+                    color=colors["Chronos-2 (Zero-Shot)"],
+                    alpha=0.15,
+                    label="Chronos-2 Zero-Shot 80% CI",
+                )
+
+    # Plot TimesFM-3 (Fine-Tuned)
+    if "TimesFM-3 (Fine-Tuned)" in results:
+        ft_res = results["TimesFM-3 (Fine-Tuned)"]
+        ax1.plot(
+            hrz_times,
+            ft_res.point_forecast,
+            color=colors["TimesFM-3 (Fine-Tuned)"],
+            label="TimesFM-3 Fine-Tuned",
+            linewidth=2.2,
+            linestyle="-",
+        )
+        if ft_res.quantiles is not None and ft_res.quantile_levels is not None:
+            if 0.1 in ft_res.quantile_levels and 0.9 in ft_res.quantile_levels:
+                idx_10 = ft_res.quantile_levels.index(0.1)
+                idx_90 = ft_res.quantile_levels.index(0.9)
+                ax1.fill_between(
+                    hrz_times,
+                    ft_res.quantiles[:, idx_10],
+                    ft_res.quantiles[:, idx_90],
+                    color=colors["TimesFM-3 (Fine-Tuned)"],
+                    alpha=0.20,
+                    label="TimesFM-3 Fine-Tuned 80% CI",
+                )
+
+    # Plot Chronos-2 (Fine-Tuned)
+    if "Chronos-2 (Fine-Tuned)" in results:
+        cft_res = results["Chronos-2 (Fine-Tuned)"]
+        ax1.plot(
+            hrz_times,
+            cft_res.point_forecast,
+            color=colors["Chronos-2 (Fine-Tuned)"],
+            label="Chronos-2 Fine-Tuned",
+            linewidth=2.2,
+            linestyle="-",
+        )
+        if cft_res.quantiles is not None and cft_res.quantile_levels is not None:
+            if 0.1 in cft_res.quantile_levels and 0.9 in cft_res.quantile_levels:
+                idx_10 = cft_res.quantile_levels.index(0.1)
+                idx_90 = cft_res.quantile_levels.index(0.9)
+                ax1.fill_between(
+                    hrz_times,
+                    cft_res.quantiles[:, idx_10],
+                    cft_res.quantiles[:, idx_90],
+                    color=colors["Chronos-2 (Fine-Tuned)"],
+                    alpha=0.20,
+                    label="Chronos-2 Fine-Tuned 80% CI",
                 )
 
     # Plot LightGBM
@@ -128,7 +203,7 @@ def plot_benchmark_comparison(
         ax1.plot(
             hrz_times,
             deep_res.point_forecast,
-            color=colors.get("DeepAR (Deep Learning)", "#9333ea"),
+            color=colors.get("DeepAR (Deep Learning)", "#0891b2"),
             label="DeepAR",
             linewidth=1.5,
             alpha=0.8,
@@ -201,9 +276,12 @@ def plot_rolling_benchmark_summary(
 
     colors = {
         "TimesFM-3 (Zero-Shot)": "#2563eb",
+        "Chronos-2 (Zero-Shot)": "#ea580c",
+        "TimesFM-3 (Fine-Tuned)": "#7c3aed",
+        "Chronos-2 (Fine-Tuned)": "#dc2626",
         "LightGBM": "#16a34a",
         "AutoARIMA": "#d97706",
-        "DeepAR (Deep Learning)": "#9333ea",
+        "DeepAR (Deep Learning)": "#0891b2",
     }
 
     models = df_details["Model"].unique().tolist()
@@ -329,3 +407,194 @@ def plot_rolling_benchmark_summary(
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
     logger.info("Saved rolling benchmark summary plot to %s", output_path)
+
+
+def plot_training_curves(
+    history_df: pd.DataFrame,
+    output_path: Path,
+) -> None:
+    """Generate multi-panel figure displaying training and validation loss curves, errors, and LR schedule.
+
+    Args:
+        history_df: DataFrame containing epoch, train_loss, val_loss, val_mae, val_rmse, lr.
+        output_path: Output image destination path.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    plt.style.use(
+        "seaborn-v0_8-whitegrid"
+        if "seaborn-v0_8-whitegrid" in plt.style.available
+        else "default"
+    )
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    ax_loss, ax_metrics, ax_lr = axes[0], axes[1], axes[2]
+
+    epochs = history_df["Epoch"].values
+
+    # Panel 1: Loss curves
+    ax_loss.plot(
+        epochs,
+        history_df["Train_Loss"].values,
+        marker="o",
+        linewidth=2.2,
+        color="#2563eb",
+        label="Train Joint Loss (Pinball + Huber)",
+    )
+    ax_loss.plot(
+        epochs,
+        history_df["Val_Loss"].values,
+        marker="s",
+        linewidth=2.2,
+        color="#e11d48",
+        label="Validation Joint Loss",
+    )
+    ax_loss.set_title(
+        "Training & Validation Loss Progression", fontsize=12, fontweight="bold"
+    )
+    ax_loss.set_xlabel("Epoch", fontsize=11)
+    ax_loss.set_ylabel("Joint Loss", fontsize=11)
+    ax_loss.set_xticks(epochs)
+    ax_loss.legend(loc="upper right", frameon=True, fontsize=10)
+    ax_loss.grid(True, alpha=0.3)
+
+    # Panel 2: Validation MAE & RMSE
+    if "Val_MAE" in history_df.columns and "Val_RMSE" in history_df.columns:
+        ax_metrics.plot(
+            epochs,
+            history_df["Val_MAE"].values,
+            marker="^",
+            linewidth=2.0,
+            color="#7c3aed",
+            label="Val MAE (degC)",
+        )
+        ax_metrics.plot(
+            epochs,
+            history_df["Val_RMSE"].values,
+            marker="D",
+            linewidth=2.0,
+            color="#0891b2",
+            label="Val RMSE (degC)",
+        )
+        ax_metrics.set_title(
+            "Validation Point Error (MAE & RMSE)", fontsize=12, fontweight="bold"
+        )
+        ax_metrics.set_xlabel("Epoch", fontsize=11)
+        ax_metrics.set_ylabel("Error (degC)", fontsize=11)
+        ax_metrics.set_xticks(epochs)
+        ax_metrics.legend(loc="upper right", frameon=True, fontsize=10)
+        ax_metrics.grid(True, alpha=0.3)
+
+    # Panel 3: Learning Rate
+    if "LR" in history_df.columns:
+        ax_lr.plot(
+            epochs,
+            history_df["LR"].values,
+            marker="o",
+            linewidth=2.0,
+            color="#d97706",
+            label="Cosine Learning Rate",
+        )
+        ax_lr.set_title("Learning Rate Schedule", fontsize=12, fontweight="bold")
+        ax_lr.set_xlabel("Epoch", fontsize=11)
+        ax_lr.set_ylabel("Learning Rate", fontsize=11)
+        ax_lr.set_xticks(epochs)
+        ax_lr.yaxis.set_major_formatter(plt.ScalarFormatter(useMathText=True))
+        ax_lr.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+        ax_lr.legend(loc="upper right", frameon=True, fontsize=10)
+        ax_lr.grid(True, alpha=0.3)
+
+    plt.suptitle(
+        "TimesFM-3 Zero-Leakage Fine-Tuning Performance & Loss Curves",
+        fontsize=14,
+        fontweight="bold",
+        y=1.02,
+    )
+    plt.tight_layout()
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved training curves plot to %s", output_path)
+
+
+def plot_chronos_training_curves(
+    history_df: pd.DataFrame,
+    output_path: Path,
+) -> None:
+    """Generate multi-panel figure displaying Chronos-2 fine-tuning loss curves and learning rate schedule.
+
+    Args:
+        history_df: DataFrame containing step, train_loss, eval_loss, lr.
+        output_path: Destination image path.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    plt.style.use(
+        "seaborn-v0_8-whitegrid"
+        if "seaborn-v0_8-whitegrid" in plt.style.available
+        else "default"
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    ax_loss, ax_lr = axes[0], axes[1]
+
+    steps = history_df["Step"].values
+
+    # Panel 1: Loss curves
+    if "Train_Loss" in history_df.columns:
+        ax_loss.plot(
+            steps,
+            history_df["Train_Loss"].values,
+            marker="o",
+            linewidth=2.2,
+            color="#ea580c",
+            label="Training Cross-Entropy Loss",
+        )
+    if "Eval_Loss" in history_df.columns:
+        ax_loss.plot(
+            steps,
+            history_df["Eval_Loss"].values,
+            marker="s",
+            linewidth=2.2,
+            color="#dc2626",
+            label="Validation Cross-Entropy Loss",
+        )
+    ax_loss.set_title(
+        "Chronos-2 Training & Validation Loss Progression",
+        fontsize=12,
+        fontweight="bold",
+    )
+    ax_loss.set_xlabel("Optimization Step", fontsize=11)
+    ax_loss.set_ylabel("Loss", fontsize=11)
+    ax_loss.set_xticks(steps)
+    ax_loss.legend(loc="upper right", frameon=True, fontsize=10)
+    ax_loss.grid(True, alpha=0.3)
+
+    # Panel 2: Learning Rate Schedule
+    if "LR" in history_df.columns:
+        ax_lr.plot(
+            steps,
+            history_df["LR"].values,
+            marker="o",
+            linewidth=2.0,
+            color="#0891b2",
+            label="Linear LR Schedule",
+        )
+        ax_lr.set_title("Learning Rate Decay", fontsize=12, fontweight="bold")
+        ax_lr.set_xlabel("Optimization Step", fontsize=11)
+        ax_lr.set_ylabel("Learning Rate", fontsize=11)
+        ax_lr.set_xticks(steps)
+        ax_lr.yaxis.set_major_formatter(plt.ScalarFormatter(useMathText=True))
+        ax_lr.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+        ax_lr.legend(loc="upper right", frameon=True, fontsize=10)
+        ax_lr.grid(True, alpha=0.3)
+
+    plt.suptitle(
+        "Chronos-2 LoRA Fine-Tuning Performance & Loss Curves",
+        fontsize=14,
+        fontweight="bold",
+        y=1.02,
+    )
+    plt.tight_layout()
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Saved Chronos training curves plot to %s", output_path)

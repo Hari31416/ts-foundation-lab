@@ -13,3 +13,10 @@ wheels/
 /data/
 *.csv.zip
 .pytest_cache/
+
+# Model Weights Checkpoints
+*.pt
+*.bin
+*.safetensors
+results/chronos2_finetuned/
+

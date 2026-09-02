@@ -152,3 +152,100 @@ def test_rolling_windows_generation(tmp_path: Path) -> None:
             assert w.horizon_target.shape == (32,)
             assert w.past_only_context.shape == (6, 128)
             assert w.past_future_full.shape == (6, 160)
+
+
+def test_joint_quantile_huber_loss() -> None:
+    """Test computation and differentiability of joint loss."""
+    import torch
+    from src.training.loss import JointQuantileHuberLoss
+
+    loss_fn = JointQuantileHuberLoss()
+    pred_quantiles = torch.randn(2, 96, 9, requires_grad=True)
+    actual = torch.randn(2, 96)
+
+    loss = loss_fn(pred_quantiles, actual)
+    assert loss.item() > 0.0
+    loss.backward()
+    assert pred_quantiles.grad is not None
+    assert pred_quantiles.grad.shape == (2, 96, 9)
+
+
+def test_sliding_dataset() -> None:
+    """Test sliding dataset batch formatting."""
+    import pandas as pd
+    from src.data.timeseries_dataset import WeatherSlidingDataset
+
+    n_rows = 700
+    targets_df = pd.DataFrame({"T (degC)": np.arange(n_rows, dtype=np.float32)})
+    past_only_df = pd.DataFrame(
+        {f"p_{i}": np.zeros(n_rows, dtype=np.float32) for i in range(4)}
+    )
+    past_future_df = pd.DataFrame(
+        {f"pf_{i}": np.zeros(n_rows, dtype=np.float32) for i in range(6)}
+    )
+
+    ds = WeatherSlidingDataset(
+        targets_df=targets_df,
+        past_only_df=past_only_df,
+        past_future_df=past_future_df,
+        context_length=512,
+        horizon=96,
+        stride=32,
+    )
+    assert len(ds) > 0
+    ctx, hrz, po, pf = ds[0]
+    assert ctx.shape == (1, 512)
+    assert hrz.shape == (96,)
+    assert po.shape == (4, 512)
+    assert pf.shape == (6, 608)
+
+
+def test_chronos2_model_wrapper(mock_benchmark_window: BenchmarkWindow) -> None:
+    """Test Chronos2 zero-shot inference on synthetic benchmark window."""
+    from src.models.chronos_model import Chronos2ModelWrapper
+
+    wrapper = Chronos2ModelWrapper(
+        pretrained_model_id="amazon/chronos-2", device_map="cpu"
+    )
+    result = wrapper.forecast(
+        context=mock_benchmark_window.context_target,
+        horizon=96,
+        past_only_covariates=mock_benchmark_window.past_only_context,
+        past_future_covariates=mock_benchmark_window.past_future_full,
+    )
+    assert result.model_name == "Chronos-2 (Zero-Shot)"
+    assert result.point_forecast.shape == (96,)
+    assert result.quantiles is not None
+    assert result.quantiles.shape == (96, 9)
+    assert result.inference_time_ms > 0.0
+
+
+def test_prepare_chronos_dataset_splits() -> None:
+    """Test Chronos sliding window dataset preparation."""
+    import pandas as pd
+    from src.training.chronos_trainer import prepare_chronos_dataset_splits
+
+    n_rows = 700
+    targets_df = pd.DataFrame({"T (degC)": np.arange(n_rows, dtype=np.float32)})
+    past_only_df = pd.DataFrame(
+        {f"p_{i}": np.zeros(n_rows, dtype=np.float32) for i in range(4)}
+    )
+    past_future_df = pd.DataFrame(
+        {f"pf_{i}": np.zeros(n_rows, dtype=np.float32) for i in range(6)}
+    )
+
+    entries = prepare_chronos_dataset_splits(
+        targets_df=targets_df,
+        past_only_df=past_only_df,
+        past_future_df=past_future_df,
+        stride=64,
+        context_length=512,
+        horizon=96,
+    )
+    assert len(entries) > 0
+    first = entries[0]
+    assert "target" in first
+    assert len(first["target"]) == 512
+    assert "past_covariates" in first
+    assert "future_covariates" in first
+    assert len(first["future_covariates"]["pf_0"]) == 96
