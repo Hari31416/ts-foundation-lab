@@ -86,6 +86,14 @@ Individual plots and metric CSVs for all 12 evaluation windows are archived in [
 
 Install `uv` (Fast Python package and project manager).
 
+### Running the Universal Gradio Web App
+
+Launch the interactive web UI to upload any time series dataset or select demo presets:
+
+```bash
+uv run python app.py --port 7860
+```
+
 ### Running the Benchmark
 
 ```bash
@@ -93,10 +101,14 @@ uv sync
 uv run python run_benchmark.py
 ```
 
-### Running the Optional Fine-Tuning Pipeline
+### Running the Optional Fine-Tuning Pipelines
 
 ```bash
+# TimesFM-3 Fine-Tuning
 uv run python train_timesfm.py --epochs 3 --lr 1e-4
+
+# Chronos-2 LoRA Fine-Tuning
+uv run python train_chronos.py --steps 300 --lr 1e-4 --mode lora
 ```
 
 ### Running Tests
