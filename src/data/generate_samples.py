@@ -7,7 +7,7 @@ import pandas as pd
 
 def generate_sample_datasets() -> None:
     """Generate sample datasets for retail sales and energy demand."""
-    samples_dir = Path(__file__).resolve().parent.parent.parent / "data" / "samples"
+    samples_dir = Path(__file__).resolve().parent.parent.parent / "sample_data"
     samples_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Hourly Energy Demand Dataset (1 year, hourly)

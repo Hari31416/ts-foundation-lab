@@ -26,8 +26,7 @@ logging.basicConfig(
 logger = logging.getLogger("gradio_app")
 
 BASE_DIR = Path(__file__).resolve().parent
-SAMPLES_DIR = BASE_DIR / "data" / "samples"
-JENA_PATH = BASE_DIR / "data" / "jena_climate_2009_2016.csv"
+SAMPLES_DIR = BASE_DIR / "sample_data"
 
 # Ensure sample demo datasets exist
 if (
@@ -37,6 +36,15 @@ if (
     generate_sample_datasets()
 
 PRESET_CONFIGS = {
+    "Electricity Transformer Temperature (ETTh1 Benchmark)": {
+        "path": SAMPLES_DIR / "ett_electricity_transformer.csv",
+        "target": "OT",
+        "timestamp": "date",
+        "past_only": ["HUFL", "HULL", "MUFL", "MULL", "LUFL", "LULL"],
+        "past_future": [],
+        "horizon": 96,
+        "context": 256,
+    },
     "Hourly Energy Grid Demand (Sample)": {
         "path": SAMPLES_DIR / "hourly_energy_grid.csv",
         "target": "energy_demand_mw",
@@ -45,6 +53,51 @@ PRESET_CONFIGS = {
         "past_future": ["is_weekend"],
         "horizon": 96,
         "context": 256,
+    },
+    "Melbourne Daily Minimum Temperatures": {
+        "path": SAMPLES_DIR / "melbourne_daily_temperatures.csv",
+        "target": "Daily minimum temperatures",
+        "timestamp": "Date",
+        "past_only": [],
+        "past_future": [],
+        "horizon": 96,
+        "context": 256,
+    },
+    "Daily Total Female Births": {
+        "path": SAMPLES_DIR / "daily_female_births.csv",
+        "target": "Births",
+        "timestamp": "Date",
+        "past_only": [],
+        "past_future": [],
+        "horizon": 48,
+        "context": 128,
+    },
+    "Monthly Solar Sunspots (1749–1983)": {
+        "path": SAMPLES_DIR / "monthly_sunspots.csv",
+        "target": "Sunspots",
+        "timestamp": "Month",
+        "past_only": [],
+        "past_future": [],
+        "horizon": 48,
+        "context": 256,
+    },
+    "Monthly Airline Passengers (Box-Jenkins)": {
+        "path": SAMPLES_DIR / "monthly_airline_passengers.csv",
+        "target": "Passengers",
+        "timestamp": "Month",
+        "past_only": [],
+        "past_future": [],
+        "horizon": 24,
+        "context": 64,
+    },
+    "Monthly Quebec Car Sales": {
+        "path": SAMPLES_DIR / "monthly_car_sales.csv",
+        "target": "Sales",
+        "timestamp": "Month",
+        "past_only": [],
+        "past_future": [],
+        "horizon": 24,
+        "context": 64,
     },
     "Daily Retail Store Sales (Sample)": {
         "path": SAMPLES_DIR / "daily_retail_sales.csv",
@@ -57,23 +110,6 @@ PRESET_CONFIGS = {
     },
 }
 
-if JENA_PATH.exists():
-    PRESET_CONFIGS["Jena Climate Weather (Benchmark)"] = {
-        "path": JENA_PATH,
-        "target": "T (degC)",
-        "timestamp": "Date Time",
-        "past_only": [
-            "p (mbar)",
-            "rh (%)",
-            "wv (m/s)",
-            "Tdew (degC)",
-            "VPdef (mbar)",
-            "rho (g/m**3)",
-        ],
-        "past_future": [],
-        "horizon": 96,
-        "context": 256,
-    }
 
 engine = UniversalForecastingEngine(results_dir=BASE_DIR / "results")
 
