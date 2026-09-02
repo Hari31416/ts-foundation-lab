@@ -351,24 +351,97 @@ def build_app() -> gr.Blocks:
     }
     """
 
-    with gr.Blocks(
-        title="Foundation Time Series Forecaster", theme=theme, css=custom_css
-    ) as demo:
+    with gr.Blocks(title="Foundation Time Series Forecaster") as demo:
         dataset_state = gr.State()
 
-        # Header Banner
+        # Top Header Banner with Embedded Styles
         gr.HTML("""
-            <div class="header-banner">
-                <div class="header-title">Foundation Time Series Forecaster</div>
-                <div class="header-subtitle">Zero-shot multi-variable time series forecasting powered by Google TimesFM-3 and Amazon Chronos-2.</div>
+            <style>
+                .header-card {
+                    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                    color: #ffffff;
+                    padding: 24px 28px;
+                    border-radius: 12px;
+                    border: 1px solid #334155;
+                    margin-bottom: 18px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+                }
+                .header-main-title {
+                    font-size: 26px;
+                    font-weight: 800;
+                    color: #f8fafc;
+                    letter-spacing: -0.5px;
+                    margin-bottom: 6px;
+                    line-height: 1.2;
+                }
+                .header-sub-title {
+                    font-size: 14.5px;
+                    color: #94a3b8;
+                    margin-bottom: 12px;
+                    font-weight: 400;
+                }
+                .badge-pill {
+                    display: inline-block;
+                    padding: 3px 10px;
+                    border-radius: 9999px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    margin-right: 6px;
+                }
+                .badge-google {
+                    background: rgba(59, 130, 246, 0.18);
+                    color: #93c5fd;
+                    border: 1px solid rgba(59, 130, 246, 0.35);
+                }
+                .badge-amazon {
+                    background: rgba(249, 115, 22, 0.18);
+                    color: #fdba74;
+                    border: 1px solid rgba(249, 115, 22, 0.35);
+                }
+            </style>
+            <div class="header-card">
+                <div class="header-main-title">Foundation Time Series Forecaster</div>
+                <div class="header-sub-title">Zero-shot multi-variable time series forecasting powered by state-of-the-art foundation models.</div>
+                <div>
+                    <span class="badge-pill badge-google">Google TimesFM-3 (Zero-Shot)</span>
+                    <span class="badge-pill badge-amazon">Amazon Chronos-2 (Zero-Shot)</span>
+                </div>
             </div>
             """)
+
+        # Layman Guide & Terminology Accordion
+        with gr.Accordion(
+            "Concepts & Terminology Guide (Click to Expand)",
+            open=False,
+        ):
+            gr.Markdown("""
+                ### 1. Target vs. Covariates (What are they?)
+                - **Target Column (Required)**: The exact quantity you want to predict into the future (e.g., *Tomorrow's Energy Demand*, *Next Month's Sales*, or *Tomorrow's Temperature*).
+                - **Past-Only Covariates (Optional)**: Extra helper signals that you only know up to today, not tomorrow (e.g., *Yesterday's Weather*, *Website Traffic Count*). The models look at their past patterns to better understand the target.
+                - **Past & Future Covariates (Optional)**: Special helper features that you know both in the past **AND** already know for future dates (e.g., *Is Weekend / Holiday*, *Scheduled Marketing Promo*, *Price Discounts*). Because these are known ahead of time, the model can anticipate demand surges.
+
+                ### 2. Context vs. Horizon (How far back & forward?)
+                - **Historical Context (Lookback)**: How many past time steps the model reads before making a forecast (e.g., reading the last 256 hours).
+                - **Forecast Horizon**: How many steps into the future you want the model to predict (e.g., predicting 96 hours ahead).
+
+                ### 3. What is Backtesting Mode?
+                - **Backtesting (Holdout Testing)**: Think of this like giving the model a test with known answers. The app hides the last *Horizon* steps from the model, asks it to forecast them, and then compares its guesses against the real numbers.
+                - This allows the app to calculate real-world accuracy scorecards like **MAE (Average Error)** and **RMSE** to prove how well each model performed.
+                - **Future Mode (Unchecked)**: When backtesting is turned off, the model uses all latest data up to the very last timestamp to extrapolate into the unknown future.
+
+                ### 4. How are Large Datasets Handled?
+                - If you upload a huge CSV with 100,000+ rows, you don't need to wait minutes. The engine automatically slices the most recent *Context* window directly before the forecast cutoff. This keeps predictions instantaneous (~100–200 ms) regardless of file size.
+
+                ### 5. What do the Shaded Bands Mean? (80% Confidence Interval)
+                - Foundation models don't just give a single guess—they produce a probability distribution. The shaded colored band shows the **80% range of likely outcomes** (from the 10th percentile to the 90th percentile). A narrow band means high model certainty, while a wide band warns of higher volatility.
+                """)
 
         with gr.Row(equal_height=False):
             # Left Column: Controls
             with gr.Column(scale=4):
                 with gr.Group():
                     gr.Markdown("### 1. Data Source")
+
                     with gr.Tabs():
                         with gr.TabItem("Upload CSV"):
                             file_input = gr.File(
