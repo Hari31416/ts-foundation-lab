@@ -638,11 +638,12 @@ def main() -> None:
         "--server-name", type=str, default="0.0.0.0", help="Server hostname."
     )
     args = parser.parse_args()
+    port = int(os.environ.get("PORT", args.port))
 
-    logger.info("Launching Gradio App on http://%s:%d...", args.server_name, args.port)
+    logger.info("Launching Gradio App on http://%s:%d...", args.server_name, port)
     demo.launch(
         server_name=args.server_name,
-        server_port=args.port,
+        server_port=port,
         share=args.share,
     )
 
