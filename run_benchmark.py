@@ -302,10 +302,10 @@ def run_benchmark() -> None:
         output_path=rolling_plot_path,
     )
 
-    # Step 7: Auto-generate comprehensive README.md
-    readme_path = base_dir / "README.md"
-    generate_readme(
-        readme_path=readme_path,
+    # Step 7: Auto-generate comprehensive BENCHMARK.md
+    benchmark_md_path = base_dir / "BENCHMARK.md"
+    generate_benchmark_doc(
+        benchmark_path=benchmark_md_path,
         df_summary=df_summary,
         df_details=df_details,
         uncertainty_details=uncertainty_details,
@@ -313,12 +313,12 @@ def run_benchmark() -> None:
         context_length=context_length,
         horizon=horizon,
     )
-    logger.info("Auto-generated README at %s", readme_path)
+    logger.info("Auto-generated benchmark report at %s", benchmark_md_path)
     logger.info("Benchmark execution completed successfully.")
 
 
-def generate_readme(
-    readme_path: Path,
+def generate_benchmark_doc(
+    benchmark_path: Path,
     df_summary: pd.DataFrame,
     df_details: pd.DataFrame,
     uncertainty_details: dict,
@@ -326,7 +326,7 @@ def generate_readme(
     context_length: int,
     horizon: int,
 ) -> None:
-    """Generate comprehensive project README with rolling-window methodology and benchmark results."""
+    """Generate comprehensive benchmark report with rolling-window methodology and benchmark results."""
     # Format aggregate summary table
     summary_headers = [
         "Model",
@@ -390,6 +390,7 @@ def generate_readme(
         "TimesFM-3 (Zero-Shot)",
         "Chronos-2 (Zero-Shot)",
         "TimesFM-3 (Fine-Tuned)",
+        "Chronos-2 (Fine-Tuned)",
     ]:
         if model_key in uncertainty_details:
             info = uncertainty_details[model_key]
@@ -402,7 +403,7 @@ def generate_readme(
 
     uncertainty_block = "\n".join(uncertainty_lines)
 
-    readme_content = f"""# Foundation Models Multi-Variable Forecasting Benchmark: TimesFM-3 vs Chronos-2
+    benchmark_content = f"""# Foundation Models Multi-Variable Forecasting Benchmark: TimesFM-3 vs Chronos-2
 
 Comprehensive forecasting benchmark evaluating Google TimesFM-3 and Amazon Chronos-2 foundation models against classical statistical, gradient boosted tree, and deep learning forecasting architectures on the Weather multi-variable dataset across a {num_windows}-window rolling evaluation protocol.
 
@@ -424,6 +425,8 @@ This repository benchmarks time series models under standardized context lengths
 
 - TimesFM-3 (Zero-Shot): Google foundation model (`google/timesfm-3.0-pytorch`) predicting point forecasts and 9 quantile intervals (10th to 90th percentile) using cross-attention over multivariate past and future covariates.
 - Chronos-2 (Zero-Shot): Amazon foundation model (`amazon/chronos-2`) predicting point forecasts and 9 quantile intervals (10th to 90th percentile) using covariate-informed attention over past and future regressors.
+- TimesFM-3 (Fine-Tuned): Model fine-tuned on train split with multi-quantile pinball loss.
+- Chronos-2 (Fine-Tuned): Model fine-tuned using LoRA parameter-efficient adapters.
 - AutoARIMA: Classical statistical benchmark fitted via stepwise parameter search with dynamic calendar exogenous regressors.
 - LightGBM / Tree Boosting: Gradient boosted decision trees using lag features, rolling statistics, and future calendar covariate steps.
 - DeepAR (Deep Learning): Recurrent neural network with Gaussian likelihood head trained on context sequences using Monte Carlo predictive sampling.
@@ -460,40 +463,9 @@ Individual plots and metric CSVs for all {num_windows} evaluation windows are ar
 3. Model Inference (`run_benchmark.py`): Execute predictions across all evaluated model classes under identical historical context and future horizon inputs for each window.
 4. Evaluation: Compute MAE, RMSE, WAPE, CRPS, 10th-90th coverage calibration, and inference latency per window and in aggregate.
 5. Visualization & Reporting: Generate per-window comparison plots (`results/windows/`), cross-window summary plots (`results/rolling_benchmark_summary.png`), summary CSVs, uncertainty JSON metrics, and auto-update this documentation.
-
-## Installation and Reproduction
-
-### Prerequisites
-
-Install `uv` (Fast Python package and project manager).
-
-### Running the Benchmark
-
-```bash
-uv sync
-uv run python run_benchmark.py
-```
-
-### Running the Optional Fine-Tuning Pipeline
-
-```bash
-uv run python train_timesfm.py --epochs 3 --lr 1e-4
-```
-
-### Running Tests
-
-```bash
-uv run pytest tests/
-```
-
-### Code Formatting
-
-```bash
-uv run black .
-```
 """
-    with open(readme_path, "w", encoding="utf-8") as f:
-        f.write(readme_content)
+    with open(benchmark_path, "w", encoding="utf-8") as f:
+        f.write(benchmark_content)
 
 
 if __name__ == "__main__":
