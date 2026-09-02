@@ -606,6 +606,9 @@ def build_app() -> gr.Blocks:
     return demo
 
 
+demo = build_app()
+
+
 def main() -> None:
     """CLI entrypoint for running Gradio server."""
     parser = argparse.ArgumentParser(
@@ -621,11 +624,10 @@ def main() -> None:
         "--share", action="store_true", help="Create public Gradio share link."
     )
     parser.add_argument(
-        "--server-name", type=str, default="127.0.0.1", help="Server hostname."
+        "--server-name", type=str, default="0.0.0.0", help="Server hostname."
     )
     args = parser.parse_args()
 
-    demo = build_app()
     logger.info("Launching Gradio App on http://%s:%d...", args.server_name, args.port)
     demo.launch(
         server_name=args.server_name,
