@@ -9,6 +9,13 @@
     "mean_mae": 1.6575132310390472,
     "mean_rmse": 1.8744976669549942
   },
+  "TimesFM-2.5 (Zero-Shot)": {
+    "mean_empirical_80_coverage": 0.6380208333333334,
+    "mean_interval_width": 5.554700215657552,
+    "mean_crps": 1.7397402996818225,
+    "mean_mae": 2.23882337162892,
+    "mean_rmse": 2.568883409102758
+  },
   "Chronos-2 (Zero-Shot)": {
     "mean_empirical_80_coverage": 0.7916666666666666,
     "mean_interval_width": 4.930181264877319,

@@ -415,8 +415,10 @@ def build_app() -> gr.Blocks:
                 <div class="header-sub-title">Zero-shot multi-variable time series forecasting powered by state-of-the-art foundation models.</div>
                 <div>
                     <span class="badge-pill badge-google">Google TimesFM-3 (Zero-Shot)</span>
-                    <span class="badge-pill badge-amazon">Amazon Chronos-2 (Zero-Shot)</span>
+                    <span class="badge-pill badge-google">Google TimesFM-2.5 (Apache 2.0)</span>
+                    <span class="badge-pill badge-amazon">Amazon Chronos-2 (Apache 2.0)</span>
                 </div>
+
             </div>
             """)
 
@@ -521,9 +523,14 @@ def build_app() -> gr.Blocks:
                     models_checkbox = gr.CheckboxGroup(
                         choices=[
                             "TimesFM-3 (Zero-Shot)",
+                            "TimesFM-2.5 (Zero-Shot)",
                             "Chronos-2 (Zero-Shot)",
                         ],
-                        value=["TimesFM-3 (Zero-Shot)", "Chronos-2 (Zero-Shot)"],
+                        value=[
+                            "TimesFM-3 (Zero-Shot)",
+                            "TimesFM-2.5 (Zero-Shot)",
+                            "Chronos-2 (Zero-Shot)",
+                        ],
                         label="Zero-Shot Foundation Models",
                     )
 

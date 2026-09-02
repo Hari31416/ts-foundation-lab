@@ -18,6 +18,7 @@ from src.models.chronos_finetuned import Chronos2FineTunedWrapper
 from src.models.chronos_model import Chronos2ModelWrapper
 from src.models.classical_model import ClassicalForecaster
 from src.models.deep_model import DeepLearningForecaster
+from src.models.timesfm2_5_model import TimesFM2p5ModelWrapper
 from src.models.timesfm_finetuned import TimesFM3FineTunedWrapper
 from src.models.timesfm_model import ForecastResult, TimesFM3ModelWrapper
 from src.models.tree_model import LightGBMForecaster
@@ -73,6 +74,7 @@ def run_benchmark() -> None:
     logger.info("Initializing models for benchmark...")
     models = {
         "TimesFM-3 (Zero-Shot)": TimesFM3ModelWrapper(),
+        "TimesFM-2.5 (Zero-Shot)": TimesFM2p5ModelWrapper(),
         "Chronos-2 (Zero-Shot)": Chronos2ModelWrapper(),
         "AutoARIMA": ClassicalForecaster(seasonal=False, max_p=3, max_q=3),
         "LightGBM": LightGBMForecaster(n_estimators=150, learning_rate=0.05),
@@ -271,6 +273,7 @@ def run_benchmark() -> None:
 
     for foundation_model in [
         "TimesFM-3 (Zero-Shot)",
+        "TimesFM-2.5 (Zero-Shot)",
         "Chronos-2 (Zero-Shot)",
         "TimesFM-3 (Fine-Tuned)",
         "Chronos-2 (Fine-Tuned)",
@@ -388,6 +391,7 @@ def generate_benchmark_doc(
     uncertainty_lines = []
     for model_key in [
         "TimesFM-3 (Zero-Shot)",
+        "TimesFM-2.5 (Zero-Shot)",
         "Chronos-2 (Zero-Shot)",
         "TimesFM-3 (Fine-Tuned)",
         "Chronos-2 (Fine-Tuned)",
@@ -424,7 +428,8 @@ This repository benchmarks time series models under standardized context lengths
 ## Evaluated Models
 
 - TimesFM-3 (Zero-Shot): Google foundation model (`google/timesfm-3.0-pytorch`) predicting point forecasts and 9 quantile intervals (10th to 90th percentile) using cross-attention over multivariate past and future covariates.
-- Chronos-2 (Zero-Shot): Amazon foundation model (`amazon/chronos-2`) predicting point forecasts and 9 quantile intervals (10th to 90th percentile) using covariate-informed attention over past and future regressors.
+- TimesFM-2.5 (Zero-Shot): Google foundation model (`google/timesfm-2.5-200m-pytorch`, Apache 2.0) predicting point forecasts and 9 quantile intervals over univariate historical context.
+- Chronos-2 (Zero-Shot): Amazon foundation model (`amazon/chronos-2`, Apache 2.0) predicting point forecasts and 9 quantile intervals (10th to 90th percentile) using covariate-informed attention over past and future regressors.
 - TimesFM-3 (Fine-Tuned): Model fine-tuned on train split with multi-quantile pinball loss.
 - Chronos-2 (Fine-Tuned): Model fine-tuned using LoRA parameter-efficient adapters.
 - AutoARIMA: Classical statistical benchmark fitted via stepwise parameter search with dynamic calendar exogenous regressors.

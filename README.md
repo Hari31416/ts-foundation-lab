@@ -53,21 +53,23 @@ Open your browser at `http://localhost:7860`. You can:
 
 Across 12 rolling seasonal test windows on the Jena Climate benchmark:
 
-| Model                  | MAE    | RMSE   | WAPE   | CRPS   | 80% Coverage | Latency (ms) |
-| :--------------------- | :----- | :----- | :----- | :----- | :----------- | :----------- |
-| TimesFM-3 (Fine-Tuned) | 1.3192 | 1.5173 | 0.2339 | 1.0459 | 78.5%        | 211.7 ms     |
-| Chronos-2 (Fine-Tuned) | 1.5282 | 1.7299 | 0.3493 | 1.2003 | 81.0%        | 139.1 ms     |
-| Chronos-2 (Zero-Shot)  | 1.6451 | 1.8552 | 0.3451 | 1.2826 | 79.2%        | 81.6 ms      |
-| TimesFM-3 (Zero-Shot)  | 1.6575 | 1.8745 | 0.3154 | 1.2603 | 76.5%        | 215.2 ms     |
-| DeepAR (Deep Learning) | 2.7669 | 3.1989 | 0.5296 | 2.6827 | 8.7%         | 3951.1 ms    |
-| AutoARIMA              | 2.8941 | 3.2738 | 0.6191 | 2.4257 | 57.9%        | 1808.3 ms    |
-| LightGBM               | 3.2134 | 3.6784 | 0.6036 | 3.0695 | 10.0%        | 1972.7 ms    |
+| Model | MAE | RMSE | WAPE | CRPS | 80% Coverage | Latency (ms) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| TimesFM-3 (Fine-Tuned) | 1.3192 | 1.5173 | 0.2339 | 1.0459 | 78.5% | 212.2 ms |
+| Chronos-2 (Fine-Tuned) | 1.5282 | 1.7299 | 0.3493 | 1.2003 | 81.0% | 140.7 ms |
+| Chronos-2 (Zero-Shot) | 1.6451 | 1.8552 | 0.3451 | 1.2826 | 79.2% | 79.9 ms |
+| TimesFM-3 (Zero-Shot) | 1.6575 | 1.8745 | 0.3154 | 1.2603 | 76.5% | 224.4 ms |
+| TimesFM-2.5 (Zero-Shot) | 2.2388 | 2.5689 | 0.6457 | 1.7397 | 63.8% | 155.4 ms |
+| DeepAR (Deep Learning) | 2.7530 | 3.1707 | 0.5490 | 2.6754 | 9.7% | 4035.0 ms |
+| AutoARIMA | 2.8941 | 3.2738 | 0.6191 | 2.4257 | 57.9% | 1799.2 ms |
+| LightGBM | 3.2134 | 3.6784 | 0.6036 | 3.0695 | 10.0% | 2267.9 ms |
 
 For detailed breakdown, per-window tables, and loss curves, see [`BENCHMARK.md`](BENCHMARK.md).
 
 ## Running the Benchmark Pipeline
 
-To execute the 7-model rolling evaluation protocol locally:
+To execute the 8-model rolling evaluation protocol locally:
+
 
 ```bash
 uv run python run_benchmark.py

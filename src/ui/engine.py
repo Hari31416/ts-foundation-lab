@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 from src.evaluation.metrics import evaluate_forecast
 from src.models.chronos_finetuned import Chronos2FineTunedWrapper
 from src.models.chronos_model import Chronos2ModelWrapper
+from src.models.timesfm2_5_model import TimesFM2p5ModelWrapper
 from src.models.timesfm_finetuned import TimesFM3FineTunedWrapper
 from src.models.timesfm_model import ForecastResult, TimesFM3ModelWrapper
 
@@ -21,6 +22,7 @@ COLOR_MAP = {
     "Ground Truth": "#0f172a",
     "Context (History)": "#475569",
     "TimesFM-3 (Zero-Shot)": "#2563eb",
+    "TimesFM-2.5 (Zero-Shot)": "#0284c7",
     "Chronos-2 (Zero-Shot)": "#ea580c",
     "TimesFM-3 (Fine-Tuned)": "#7c3aed",
     "Chronos-2 (Fine-Tuned)": "#dc2626",
@@ -134,8 +136,11 @@ class UniversalForecastingEngine:
         logger.info("Instantiating %s for UI inference...", model_name)
         if model_name == "TimesFM-3 (Zero-Shot)":
             self._models[model_name] = TimesFM3ModelWrapper()
+        elif model_name == "TimesFM-2.5 (Zero-Shot)":
+            self._models[model_name] = TimesFM2p5ModelWrapper()
         elif model_name == "Chronos-2 (Zero-Shot)":
             self._models[model_name] = Chronos2ModelWrapper()
+
         elif model_name == "TimesFM-3 (Fine-Tuned)":
             ckpt = self.results_dir / "timesfm_finetuned_checkpoint.pt"
             if not ckpt.exists():

@@ -249,3 +249,23 @@ def test_prepare_chronos_dataset_splits() -> None:
     assert "past_covariates" in first
     assert "future_covariates" in first
     assert len(first["future_covariates"]["pf_0"]) == 96
+
+
+def test_timesfm2p5_model_wrapper(mock_benchmark_window: BenchmarkWindow) -> None:
+    """Test TimesFM-2.5 zero-shot inference on synthetic benchmark window."""
+    from src.models.timesfm2_5_model import TimesFM2p5ModelWrapper
+
+    wrapper = TimesFM2p5ModelWrapper(
+        pretrained_model_id="google/timesfm-2.5-200m-pytorch",
+        max_context=512,
+        max_horizon=96,
+    )
+    result = wrapper.forecast(
+        context=mock_benchmark_window.context_target,
+        horizon=96,
+    )
+    assert result.model_name == "TimesFM-2.5 (Zero-Shot)"
+    assert result.point_forecast.shape == (96,)
+    assert result.quantiles is not None
+    assert result.quantiles.shape == (96, 9)
+    assert result.inference_time_ms > 0.0
