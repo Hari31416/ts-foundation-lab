@@ -269,3 +269,32 @@ def test_timesfm2p5_model_wrapper(mock_benchmark_window: BenchmarkWindow) -> Non
     assert result.quantiles is not None
     assert result.quantiles.shape == (96, 9)
     assert result.inference_time_ms > 0.0
+
+
+def test_plot_benchmark_comparison(
+    mock_benchmark_window: BenchmarkWindow, tmp_path: Path
+) -> None:
+    """Test dynamic benchmark comparison plotting with TimesFM-2.5 and arbitrary models."""
+    from src.evaluation.visualizer import plot_benchmark_comparison
+    from src.models.timesfm_model import ForecastResult
+
+    output_path = tmp_path / "test_comparison.png"
+    results = {
+        "TimesFM-2.5 (Zero-Shot)": ForecastResult(
+            model_name="TimesFM-2.5 (Zero-Shot)",
+            point_forecast=np.zeros(96, dtype=np.float32),
+            quantiles=np.zeros((96, 9), dtype=np.float32),
+            quantile_levels=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+            inference_time_ms=50.0,
+        )
+    }
+
+    plot_benchmark_comparison(
+        window=mock_benchmark_window,
+        results=results,
+        output_path=output_path,
+        show_context_tail=64,
+        window_label="Test Window 01",
+    )
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0

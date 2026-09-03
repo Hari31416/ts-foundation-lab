@@ -14,6 +14,29 @@ from src.models.timesfm_model import ForecastResult
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_COLORS: Dict[str, str] = {
+    "TimesFM-3 (Zero-Shot)": "#2563eb",
+    "TimesFM-2.5 (Zero-Shot)": "#0284c7",
+    "Chronos-2 (Zero-Shot)": "#ea580c",
+    "TimesFM-3 (Fine-Tuned)": "#7c3aed",
+    "Chronos-2 (Fine-Tuned)": "#dc2626",
+    "LightGBM": "#16a34a",
+    "AutoARIMA": "#d97706",
+    "DeepAR (Deep Learning)": "#0891b2",
+}
+
+MODEL_LINESTYLES: Dict[str, str] = {
+    "TimesFM-3 (Zero-Shot)": "-",
+    "TimesFM-2.5 (Zero-Shot)": "-",
+    "Chronos-2 (Zero-Shot)": "-",
+    "TimesFM-3 (Fine-Tuned)": "-",
+    "Chronos-2 (Fine-Tuned)": "-",
+    "LightGBM": "-.",
+    "AutoARIMA": ":",
+    "DeepAR (Deep Learning)": "--",
+}
+
+
 def plot_benchmark_comparison(
     window: BenchmarkWindow,
     results: Dict[str, ForecastResult],
@@ -21,7 +44,7 @@ def plot_benchmark_comparison(
     show_context_tail: int = 288,
     window_label: Optional[str] = None,
 ) -> None:
-    """Generate visual plot of Ground Truth vs TimesFM-3 (with uncertainty) vs LightGBM vs AutoARIMA.
+    """Generate visual plot of Ground Truth vs all evaluated models with uncertainty intervals.
 
     Args:
         window: BenchmarkWindow with ground truth context and horizon.
@@ -68,146 +91,37 @@ def plot_benchmark_comparison(
         label="Forecast Cutoff",
     )
 
-    colors = {
-        "TimesFM-3 (Zero-Shot)": "#2563eb",
-        "Chronos-2 (Zero-Shot)": "#ea580c",
-        "TimesFM-3 (Fine-Tuned)": "#7c3aed",
-        "Chronos-2 (Fine-Tuned)": "#dc2626",
-        "LightGBM": "#16a34a",
-        "AutoARIMA": "#d97706",
-        "DeepAR (Deep Learning)": "#0891b2",
-    }
-
-    # Plot TimesFM-3 (Zero-Shot)
-    if "TimesFM-3 (Zero-Shot)" in results:
-        tfm_res = results["TimesFM-3 (Zero-Shot)"]
+    # Plot each model in results dynamically
+    for model_name, res in results.items():
+        color = DEFAULT_COLORS.get(model_name, "#64748b")
+        linestyle = MODEL_LINESTYLES.get(model_name, "-")
+        linewidth = (
+            2.2
+            if "Fine-Tuned" in model_name
+            else (2.0 if "TimesFM" in model_name or "Chronos" in model_name else 1.8)
+        )
         ax1.plot(
             hrz_times,
-            tfm_res.point_forecast,
-            color=colors["TimesFM-3 (Zero-Shot)"],
-            label="TimesFM-3 Zero-Shot",
-            linewidth=2.0,
+            res.point_forecast,
+            color=color,
+            label=model_name,
+            linewidth=linewidth,
+            linestyle=linestyle,
         )
-        if tfm_res.quantiles is not None and tfm_res.quantile_levels is not None:
-            if 0.1 in tfm_res.quantile_levels and 0.9 in tfm_res.quantile_levels:
-                idx_10 = tfm_res.quantile_levels.index(0.1)
-                idx_90 = tfm_res.quantile_levels.index(0.9)
+
+        if res.quantiles is not None and res.quantile_levels is not None:
+            if 0.1 in res.quantile_levels and 0.9 in res.quantile_levels:
+                idx_10 = res.quantile_levels.index(0.1)
+                idx_90 = res.quantile_levels.index(0.9)
+                alpha = 0.20 if "Fine-Tuned" in model_name else 0.15
                 ax1.fill_between(
                     hrz_times,
-                    tfm_res.quantiles[:, idx_10],
-                    tfm_res.quantiles[:, idx_90],
-                    color=colors["TimesFM-3 (Zero-Shot)"],
-                    alpha=0.15,
-                    label="TimesFM-3 Zero-Shot 80% CI",
+                    res.quantiles[:, idx_10],
+                    res.quantiles[:, idx_90],
+                    color=color,
+                    alpha=alpha,
+                    label=f"{model_name} 80% CI",
                 )
-
-    # Plot Chronos-2 (Zero-Shot)
-    if "Chronos-2 (Zero-Shot)" in results:
-        chr_res = results["Chronos-2 (Zero-Shot)"]
-        ax1.plot(
-            hrz_times,
-            chr_res.point_forecast,
-            color=colors["Chronos-2 (Zero-Shot)"],
-            label="Chronos-2 Zero-Shot",
-            linewidth=2.0,
-            linestyle="-",
-        )
-        if chr_res.quantiles is not None and chr_res.quantile_levels is not None:
-            if 0.1 in chr_res.quantile_levels and 0.9 in chr_res.quantile_levels:
-                idx_10 = chr_res.quantile_levels.index(0.1)
-                idx_90 = chr_res.quantile_levels.index(0.9)
-                ax1.fill_between(
-                    hrz_times,
-                    chr_res.quantiles[:, idx_10],
-                    chr_res.quantiles[:, idx_90],
-                    color=colors["Chronos-2 (Zero-Shot)"],
-                    alpha=0.15,
-                    label="Chronos-2 Zero-Shot 80% CI",
-                )
-
-    # Plot TimesFM-3 (Fine-Tuned)
-    if "TimesFM-3 (Fine-Tuned)" in results:
-        ft_res = results["TimesFM-3 (Fine-Tuned)"]
-        ax1.plot(
-            hrz_times,
-            ft_res.point_forecast,
-            color=colors["TimesFM-3 (Fine-Tuned)"],
-            label="TimesFM-3 Fine-Tuned",
-            linewidth=2.2,
-            linestyle="-",
-        )
-        if ft_res.quantiles is not None and ft_res.quantile_levels is not None:
-            if 0.1 in ft_res.quantile_levels and 0.9 in ft_res.quantile_levels:
-                idx_10 = ft_res.quantile_levels.index(0.1)
-                idx_90 = ft_res.quantile_levels.index(0.9)
-                ax1.fill_between(
-                    hrz_times,
-                    ft_res.quantiles[:, idx_10],
-                    ft_res.quantiles[:, idx_90],
-                    color=colors["TimesFM-3 (Fine-Tuned)"],
-                    alpha=0.20,
-                    label="TimesFM-3 Fine-Tuned 80% CI",
-                )
-
-    # Plot Chronos-2 (Fine-Tuned)
-    if "Chronos-2 (Fine-Tuned)" in results:
-        cft_res = results["Chronos-2 (Fine-Tuned)"]
-        ax1.plot(
-            hrz_times,
-            cft_res.point_forecast,
-            color=colors["Chronos-2 (Fine-Tuned)"],
-            label="Chronos-2 Fine-Tuned",
-            linewidth=2.2,
-            linestyle="-",
-        )
-        if cft_res.quantiles is not None and cft_res.quantile_levels is not None:
-            if 0.1 in cft_res.quantile_levels and 0.9 in cft_res.quantile_levels:
-                idx_10 = cft_res.quantile_levels.index(0.1)
-                idx_90 = cft_res.quantile_levels.index(0.9)
-                ax1.fill_between(
-                    hrz_times,
-                    cft_res.quantiles[:, idx_10],
-                    cft_res.quantiles[:, idx_90],
-                    color=colors["Chronos-2 (Fine-Tuned)"],
-                    alpha=0.20,
-                    label="Chronos-2 Fine-Tuned 80% CI",
-                )
-
-    # Plot LightGBM
-    if "LightGBM" in results:
-        lgb_res = results["LightGBM"]
-        ax1.plot(
-            hrz_times,
-            lgb_res.point_forecast,
-            color=colors.get("LightGBM", "#16a34a"),
-            label="LightGBM Regressor",
-            linewidth=1.8,
-            linestyle="-.",
-        )
-
-    # Plot AutoARIMA
-    if "AutoARIMA" in results:
-        arima_res = results["AutoARIMA"]
-        ax1.plot(
-            hrz_times,
-            arima_res.point_forecast,
-            color=colors.get("AutoARIMA", "#d97706"),
-            label="AutoARIMA",
-            linewidth=1.8,
-            linestyle=":",
-        )
-
-    # Plot DeepAR if present
-    if "DeepAR (Deep Learning)" in results:
-        deep_res = results["DeepAR (Deep Learning)"]
-        ax1.plot(
-            hrz_times,
-            deep_res.point_forecast,
-            color=colors.get("DeepAR (Deep Learning)", "#0891b2"),
-            label="DeepAR",
-            linewidth=1.5,
-            alpha=0.8,
-        )
 
     main_title = (
         f"{window_label} - Forecast Benchmark (Horizon = 96)"
@@ -227,7 +141,7 @@ def plot_benchmark_comparison(
     # Bottom Plot: Absolute Residuals (|Actual - Predicted|)
     for model_name, res in results.items():
         residuals = np.abs(actual_hrz - res.point_forecast)
-        color = colors.get(model_name, "#64748b")
+        color = DEFAULT_COLORS.get(model_name, "#64748b")
         ax2.plot(
             hrz_times,
             residuals,
@@ -274,15 +188,7 @@ def plot_rolling_benchmark_summary(
     ax_mae, ax_rmse = axes[0, 0], axes[0, 1]
     ax_time, ax_crps = axes[1, 0], axes[1, 1]
 
-    colors = {
-        "TimesFM-3 (Zero-Shot)": "#2563eb",
-        "Chronos-2 (Zero-Shot)": "#ea580c",
-        "TimesFM-3 (Fine-Tuned)": "#7c3aed",
-        "Chronos-2 (Fine-Tuned)": "#dc2626",
-        "LightGBM": "#16a34a",
-        "AutoARIMA": "#d97706",
-        "DeepAR (Deep Learning)": "#0891b2",
-    }
+    colors = DEFAULT_COLORS
 
     models = df_details["Model"].unique().tolist()
     windows = df_details["Window"].unique().tolist()
