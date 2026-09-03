@@ -49,10 +49,20 @@ def main() -> None:
         default=None,
         help="Device to train on ('cuda', 'mps', 'cpu', or auto if None).",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Output directory for checkpoint (default: results/chronos2_finetuned).",
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).resolve().parent
-    output_dir = base_dir / "results" / "chronos2_finetuned"
+    output_dir = (
+        Path(args.output_dir)
+        if args.output_dir
+        else base_dir / "results" / "chronos2_finetuned"
+    )
 
     logger.info("=== Starting Chronos-2 Fine-Tuning Pipeline ===")
     logger.info("Output Directory: %s", output_dir)
