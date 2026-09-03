@@ -4,37 +4,37 @@
   "horizon": 96,
   "TimesFM-3 (Zero-Shot)": {
     "mean_empirical_80_coverage": 0.7647569444444445,
-    "mean_interval_width": 5.141744474569957,
-    "mean_crps": 1.260343760251999,
-    "mean_mae": 1.6575132310390472,
-    "mean_rmse": 1.8744976669549942
+    "mean_interval_width": 5.14174459696935,
+    "mean_crps": 1.260343755740995,
+    "mean_mae": 1.6575131904222264,
+    "mean_rmse": 1.874497672992094
   },
   "TimesFM-2.5 (Zero-Shot)": {
     "mean_empirical_80_coverage": 0.6380208333333334,
-    "mean_interval_width": 5.554700215657552,
-    "mean_crps": 1.7397402996818225,
-    "mean_mae": 2.23882337162892,
-    "mean_rmse": 2.568883409102758
+    "mean_interval_width": 5.55470019992855,
+    "mean_crps": 1.739740275715968,
+    "mean_mae": 2.2388233864767244,
+    "mean_rmse": 2.568883414115383
   },
   "Chronos-2 (Zero-Shot)": {
     "mean_empirical_80_coverage": 0.7916666666666666,
-    "mean_interval_width": 4.930181264877319,
-    "mean_crps": 1.2825999930500984,
-    "mean_mae": 1.6451191119849682,
-    "mean_rmse": 1.855229064822197
+    "mean_interval_width": 4.9301811710207,
+    "mean_crps": 1.2825999830462498,
+    "mean_mae": 1.6451191125524929,
+    "mean_rmse": 1.8552290100441893
   },
   "TimesFM-3 (Fine-Tuned)": {
     "mean_empirical_80_coverage": 0.7847222222222222,
-    "mean_interval_width": 4.137231379747391,
-    "mean_crps": 1.0459475815296173,
-    "mean_mae": 1.3191947440306346,
-    "mean_rmse": 1.5173297226428986
+    "mean_interval_width": 4.137231414296871,
+    "mean_crps": 1.0459475370909066,
+    "mean_mae": 1.3191947467647778,
+    "mean_rmse": 1.5173297332165803
   },
   "Chronos-2 (Fine-Tuned)": {
     "mean_empirical_80_coverage": 0.8098958333333334,
-    "mean_interval_width": 4.709997713565826,
-    "mean_crps": 1.2002766480048497,
-    "mean_mae": 1.5282450802624226,
-    "mean_rmse": 1.729854801048835
+    "mean_interval_width": 4.709997646821042,
+    "mean_crps": 1.2002765995691413,
+    "mean_mae": 1.528245032194213,
+    "mean_rmse": 1.7298547962363624
   }
 }
