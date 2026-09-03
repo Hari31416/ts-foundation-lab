@@ -26,6 +26,8 @@ COLOR_MAP = {
     "Chronos-2 (Zero-Shot)": "#ea580c",
     "TimesFM-3 (Fine-Tuned)": "#7c3aed",
     "Chronos-2 (Fine-Tuned)": "#dc2626",
+    "LightGBM": "#16a34a",
+    "AutoARIMA": "#d97706",
 }
 
 
@@ -43,7 +45,7 @@ def load_dataset_file(file_path: Path) -> pd.DataFrame:
                 sample = df[col].dropna().astype(str).iloc[:50]
                 # If sample doesn't look like dates (no hyphens/slashes with dates)
                 try:
-                    pd.to_datetime(sample)
+                    pd.to_datetime(sample, format="mixed")
                     continue
                 except Exception:
                     pass
@@ -85,7 +87,7 @@ def get_column_options(
             # Check if column can be parsed as datetime
             is_dt = False
             try:
-                pd.to_datetime(df[col].dropna().iloc[:30])
+                pd.to_datetime(df[col].dropna().iloc[:30], format="mixed")
                 datetime_cols.append(col)
                 is_dt = True
             except Exception:
@@ -157,6 +159,14 @@ class UniversalForecastingEngine:
             self._models[model_name] = Chronos2FineTunedWrapper(
                 checkpoint_path=ckpt_dir
             )
+        elif model_name == "LightGBM":
+            from src.models.tree_model import LightGBMForecaster
+
+            self._models[model_name] = LightGBMForecaster()
+        elif model_name == "AutoARIMA":
+            from src.models.classical_model import ClassicalForecaster
+
+            self._models[model_name] = ClassicalForecaster()
         else:
             raise ValueError(f"Unknown model name: {model_name}")
 
@@ -207,18 +217,20 @@ class UniversalForecastingEngine:
 
         df_clean = df.dropna(subset=[target_col]).copy()
 
-        # Coerce any covariate columns to numeric
+        # Coerce any covariate columns to numeric and handle missing values
         for c in past_only_cols + past_future_cols:
-            if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c]):
-                cleaned_c = (
-                    df_clean[c]
-                    .astype(str)
-                    .str.replace("?", "", regex=False)
-                    .str.replace("$", "", regex=False)
-                    .str.replace(",", "", regex=False)
-                    .str.strip()
-                )
-                df_clean[c] = pd.to_numeric(cleaned_c, errors="coerce").fillna(0.0)
+            if c in df_clean.columns:
+                if not pd.api.types.is_numeric_dtype(df_clean[c]):
+                    cleaned_c = (
+                        df_clean[c]
+                        .astype(str)
+                        .str.replace("?", "", regex=False)
+                        .str.replace("$", "", regex=False)
+                        .str.replace(",", "", regex=False)
+                        .str.strip()
+                    )
+                    df_clean[c] = pd.to_numeric(cleaned_c, errors="coerce")
+                df_clean[c] = df_clean[c].ffill().bfill().fillna(0.0)
 
         n_total = len(df_clean)
 
@@ -245,14 +257,23 @@ class UniversalForecastingEngine:
         # Parse timestamps or generate synthetic indices
         if timestamp_col and timestamp_col in df_clean.columns:
             try:
-                context_times = pd.to_datetime(context_slice[timestamp_col]).tolist()
+                context_times = pd.to_datetime(
+                    context_slice[timestamp_col], format="mixed"
+                ).tolist()
                 if backtest_mode and horizon_slice is not None:
                     horizon_times = pd.to_datetime(
-                        horizon_slice[timestamp_col]
+                        horizon_slice[timestamp_col], format="mixed"
                     ).tolist()
                 else:
                     # Extrapolate future timestamps
-                    time_diff = context_times[-1] - context_times[-2]
+                    if len(context_times) >= 2:
+                        time_diff = context_times[-1] - context_times[-2]
+                        if isinstance(
+                            time_diff, pd.Timedelta
+                        ) and time_diff <= pd.Timedelta(0):
+                            time_diff = pd.Timedelta(days=1)
+                    else:
+                        time_diff = pd.Timedelta(days=1)
                     horizon_times = [
                         context_times[-1] + time_diff * (i + 1) for i in range(horizon)
                     ]

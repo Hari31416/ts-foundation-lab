@@ -89,3 +89,30 @@ def test_ui_engine_dirty_csv_handling() -> None:
     assert "<table" in metrics_html
     assert len(pred_df) == 8
     assert not metrics_df.empty
+
+
+def test_ui_engine_lightgbm_and_nan_covariates(
+    sample_sales_df: pd.DataFrame,
+) -> None:
+    """Test LightGBM baseline execution and NaN covariate handling in UniversalForecastingEngine."""
+    df_with_nan = sample_sales_df.copy()
+    # Inject NaNs into numeric covariate
+    df_with_nan.loc[5:15, "traffic_count"] = np.nan
+
+    engine = UniversalForecastingEngine()
+    fig, metrics_df, metrics_html, pred_df = engine.run_forecasting(
+        df=df_with_nan,
+        target_col="sales_amount",
+        timestamp_col="date",
+        past_only_cols=["traffic_count"],
+        past_future_cols=["promo_flag"],
+        context_length=64,
+        horizon=16,
+        selected_models=["LightGBM"],
+        backtest_mode=True,
+    )
+    assert fig is not None
+    assert not metrics_df.empty
+    assert "LightGBM" in metrics_df["Model"].values
+    assert len(pred_df) == 16
+    assert "LightGBM_Point" in pred_df.columns

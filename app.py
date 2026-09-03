@@ -526,13 +526,14 @@ def build_app() -> gr.Blocks:
                             "TimesFM-3 (Zero-Shot)",
                             "TimesFM-2.5 (Zero-Shot)",
                             "Chronos-2 (Zero-Shot)",
+                            "LightGBM",
                         ],
                         value=[
                             "TimesFM-3 (Zero-Shot)",
                             "TimesFM-2.5 (Zero-Shot)",
                             "Chronos-2 (Zero-Shot)",
                         ],
-                        label="Zero-Shot Foundation Models",
+                        label="Forecasting Models",
                     )
 
                 predict_btn = gr.Button(
