@@ -43,6 +43,12 @@ def main() -> None:
         choices=["lora", "full"],
         help="Fine-tuning mode: 'lora' or 'full' (default: 'lora').",
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        help="Device to train on ('cuda', 'mps', 'cpu', or auto if None).",
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).resolve().parent
@@ -51,11 +57,12 @@ def main() -> None:
     logger.info("=== Starting Chronos-2 Fine-Tuning Pipeline ===")
     logger.info("Output Directory: %s", output_dir)
     logger.info(
-        "Hyperparameters: Steps=%d, Batch Size=%d, LR=%.2e, Mode=%s",
+        "Hyperparameters: Steps=%d, Batch Size=%d, LR=%.2e, Mode=%s, Device=%s",
         args.steps,
         args.batch_size,
         args.lr,
         args.mode,
+        args.device or "auto",
     )
 
     trainer = Chronos2FineTuningTrainer(
@@ -64,6 +71,7 @@ def main() -> None:
         batch_size=args.batch_size,
         num_steps=args.steps,
         finetune_mode=args.mode,
+        device=args.device,
     )
 
     ckpt_path = trainer.train()

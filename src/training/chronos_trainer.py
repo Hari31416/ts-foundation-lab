@@ -88,7 +88,7 @@ class Chronos2FineTuningTrainer:
         batch_size: int = 16,
         num_steps: int = 300,
         finetune_mode: str = "lora",
-        device_map: str = "cpu",
+        device: Optional[str] = None,
     ) -> None:
         """Initialize Chronos-2 trainer.
 
@@ -99,7 +99,7 @@ class Chronos2FineTuningTrainer:
             batch_size: Per-device batch size.
             num_steps: Number of optimizer steps.
             finetune_mode: 'lora' or 'full'.
-            device_map: Computing device.
+            device: Computing device ('cuda', 'mps', 'cpu', or None for auto).
         """
         self.output_dir = output_dir
         self.pretrained_model_id = pretrained_model_id
@@ -107,16 +107,29 @@ class Chronos2FineTuningTrainer:
         self.batch_size = batch_size
         self.num_steps = num_steps
         self.finetune_mode = finetune_mode
-        self.device_map = device_map
+
+        if device is None:
+            if torch.cuda.is_available():
+                self.device = "cuda"
+            elif torch.backends.mps.is_available():
+                self.device = "mps"
+            else:
+                self.device = "cpu"
+        else:
+            self.device = device
+
+        logger.info("Chronos-2 fine-tuning configured on device: %s", self.device)
 
     def train(self) -> Path:
         """Execute Chronos-2 fine-tuning on isolated training partition."""
         logger.info(
-            "Initializing base Chronos-2 pipeline from %s...", self.pretrained_model_id
+            "Initializing base Chronos-2 pipeline from %s on %s...",
+            self.pretrained_model_id,
+            self.device,
         )
         pipeline = Chronos2Pipeline.from_pretrained(
             self.pretrained_model_id,
-            device_map=self.device_map,
+            device_map=self.device,
         )
 
         logger.info("Preparing zero-leakage training and validation partitions...")
