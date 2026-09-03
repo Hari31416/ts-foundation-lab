@@ -21,16 +21,19 @@ class Chronos2ModelWrapper:
     def __init__(
         self,
         pretrained_model_id: str = "amazon/chronos-2",
-        device_map: str = "cpu",
+        device_map: Optional[str] = None,
     ) -> None:
         """Initialize Chronos-2 pipeline.
 
         Args:
             pretrained_model_id: HuggingFace model repository ID.
-            device_map: Computing device ('cpu', 'mps', 'cuda', etc.).
+            device_map: Computing device ('cpu', 'cuda', etc. Defaults to 'cuda' if available, else 'cpu').
         """
         self.model_id = pretrained_model_id
-        self.device_map = device_map
+        if device_map is None:
+            self.device_map = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device_map = device_map
 
         logger.info(
             "Initializing Chronos-2 pipeline from %s on %s...",

@@ -22,16 +22,19 @@ class Chronos2FineTunedWrapper:
     def __init__(
         self,
         checkpoint_path: Path,
-        device_map: str = "cpu",
+        device_map: Optional[str] = None,
     ) -> None:
         """Initialize fine-tuned Chronos-2 pipeline.
 
         Args:
             checkpoint_path: Path to fine-tuned checkpoint folder.
-            device_map: Computing device ('cpu', 'mps', 'cuda', etc.).
+            device_map: Computing device ('cpu', 'cuda', etc. Defaults to 'cuda' if available, else 'cpu').
         """
         self.checkpoint_path = Path(checkpoint_path)
-        self.device_map = device_map
+        if device_map is None:
+            self.device_map = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device_map = device_map
 
         logger.info(
             "Loading fine-tuned Chronos-2 pipeline from %s...", self.checkpoint_path
