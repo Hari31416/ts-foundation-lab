@@ -10,6 +10,7 @@ from src.evaluation.metrics import (
     compute_mae,
     compute_pinball_loss,
     compute_rmse,
+    compute_smape,
     compute_wape,
     evaluate_forecast,
 )
@@ -66,10 +67,16 @@ def test_metric_computations() -> None:
     mae = compute_mae(actual, pred)
     rmse = compute_rmse(actual, pred)
     wape = compute_wape(actual, pred)
+    smape = compute_smape(actual, pred)
 
     assert pytest.approx(mae, rel=1e-3) == (2.0 + 2.0 + 3.0) / 3.0
     assert pytest.approx(rmse, rel=1e-3) == np.sqrt((4.0 + 4.0 + 9.0) / 3.0)
     assert pytest.approx(wape, rel=1e-3) == 7.0 / 60.0
+    assert smape > 0.0
+
+    # Test dimension resilience (e.g. (N, 1) vs (N,))
+    mae_2d = compute_mae(actual.reshape(-1, 1), pred)
+    assert pytest.approx(mae_2d, rel=1e-3) == mae
 
 
 def test_coverage_and_crps() -> None:

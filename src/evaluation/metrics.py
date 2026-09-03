@@ -23,34 +23,55 @@ class EvaluationMetrics:
     ]  # Empirical coverage between 10th and 90th percentile (target = 0.80)
     avg_interval_width: Optional[float]
     inference_time_ms: float
+    smape: Optional[float] = None
 
 
 def compute_mae(actual: np.ndarray, predicted: np.ndarray) -> float:
     """Compute Mean Absolute Error."""
-    return float(np.mean(np.abs(actual - predicted)))
+    act = np.asarray(actual, dtype=np.float64).ravel()
+    pred = np.asarray(predicted, dtype=np.float64).ravel()
+    return float(np.mean(np.abs(act - pred)))
 
 
 def compute_rmse(actual: np.ndarray, predicted: np.ndarray) -> float:
     """Compute Root Mean Squared Error."""
-    return float(np.sqrt(np.mean((actual - predicted) ** 2)))
+    act = np.asarray(actual, dtype=np.float64).ravel()
+    pred = np.asarray(predicted, dtype=np.float64).ravel()
+    return float(np.sqrt(np.mean((act - pred) ** 2)))
 
 
 def compute_wape(actual: np.ndarray, predicted: np.ndarray) -> float:
     """Compute Weighted Absolute Percentage Error."""
-    denom = float(np.sum(np.abs(actual)))
+    act = np.asarray(actual, dtype=np.float64).ravel()
+    pred = np.asarray(predicted, dtype=np.float64).ravel()
+    denom = float(np.sum(np.abs(act)))
     if denom == 0:
         return 0.0
-    return float(np.sum(np.abs(actual - predicted)) / denom)
+    return float(np.sum(np.abs(act - pred)) / denom)
+
+
+def compute_smape(actual: np.ndarray, predicted: np.ndarray) -> float:
+    """Compute Symmetric Mean Absolute Percentage Error (SMAPE) in range [0, 200%]."""
+    act = np.asarray(actual, dtype=np.float64).ravel()
+    pred = np.asarray(predicted, dtype=np.float64).ravel()
+    denom = np.abs(act) + np.abs(pred)
+    mask = denom > 0
+    if not np.any(mask):
+        return 0.0
+    smape = 200.0 * np.mean(np.abs(act[mask] - pred[mask]) / denom[mask])
+    return float(smape)
 
 
 def compute_pinball_loss(
     actual: np.ndarray, pred_quantiles: np.ndarray, quantile_levels: List[float]
 ) -> float:
     """Compute average Pinball / Quantile Loss across all quantile levels."""
+    act = np.asarray(actual, dtype=np.float64).ravel()
+    quantiles = np.asarray(pred_quantiles, dtype=np.float64)
     losses = []
     for i, q in enumerate(quantile_levels):
-        q_pred = pred_quantiles[:, i]
-        err = actual - q_pred
+        q_pred = quantiles[:, i]
+        err = act - q_pred
         loss = np.maximum(q * err, (q - 1) * err)
         losses.append(np.mean(loss))
     return float(np.mean(losses))
@@ -67,9 +88,12 @@ def compute_interval_coverage(
     actual: np.ndarray, q_lower: np.ndarray, q_upper: np.ndarray
 ) -> tuple[float, float]:
     """Compute empirical coverage percentage and average interval width."""
-    in_interval = (actual >= q_lower) & (actual <= q_upper)
+    act = np.asarray(actual, dtype=np.float64).ravel()
+    q_l = np.asarray(q_lower, dtype=np.float64).ravel()
+    q_u = np.asarray(q_upper, dtype=np.float64).ravel()
+    in_interval = (act >= q_l) & (act <= q_u)
     coverage = float(np.mean(in_interval))
-    avg_width = float(np.mean(q_upper - q_lower))
+    avg_width = float(np.mean(q_u - q_l))
     return coverage, avg_width
 
 
@@ -85,6 +109,7 @@ def evaluate_forecast(
     mae = compute_mae(actual, point_pred)
     rmse = compute_rmse(actual, point_pred)
     wape = compute_wape(actual, point_pred)
+    smape = compute_smape(actual, point_pred)
 
     crps = None
     coverage_80 = None
@@ -106,6 +131,7 @@ def evaluate_forecast(
         mae=mae,
         rmse=rmse,
         wape=wape,
+        smape=smape,
         crps=crps,
         coverage_80=coverage_80,
         avg_interval_width=avg_width,
